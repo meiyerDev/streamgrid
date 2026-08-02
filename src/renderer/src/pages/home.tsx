@@ -143,7 +143,7 @@ function AdminDrawer({
   return (
     <Drawer open={open} onOpenChange={onOpenChange} swipeDirection="right">
       {trigger && <DrawerTrigger className={triggerClassName}>{trigger}</DrawerTrigger>}
-      <DrawerContent className="w-[26rem] max-w-[90vw]">
+      <DrawerContent className="w-104 max-w-[90vw]">
         <DrawerHeader className="px-6 pt-6">
           <DrawerTitle>Administrar streams</DrawerTitle>
           <DrawerDescription>
@@ -486,7 +486,8 @@ export function HomePage(): React.JSX.Element {
             onCreate={() => createProfile('')}
           />
         </div>
-        <nav className="ml-auto flex items-center gap-2">{streams.length > 0 && (
+        <nav className="ml-auto flex items-center gap-2">
+          {streams.length > 0 && (
             <button
               onClick={pushSync}
               aria-label={'Refrescar mosaico'}
