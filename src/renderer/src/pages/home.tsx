@@ -8,7 +8,7 @@ import {
   type ReactNode
 } from 'react'
 import { Link } from '@tanstack/react-router'
-import { Check, LayoutGrid, Pencil, Settings, UserRound, X } from 'lucide-react'
+import { Check, LayoutGrid, Pencil, Save, UserRound, X } from 'lucide-react'
 import ReactGridLayout, { useContainerWidth, type Layout, type LayoutItem } from 'react-grid-layout'
 import 'react-grid-layout/css/styles.css'
 import { getProvider } from '../../../shared/providers'
@@ -26,6 +26,8 @@ import {
 } from '../../../shared/streams'
 import type { ViewBounds, ViewsSyncPayload } from '../../../shared/views'
 import { AddStreamForm } from '../components/add-stream-form'
+import { ProfileSaveDialog } from '../components/profile-save-dialog'
+import { ProfileTabs } from '../components/profile-tabs'
 import { StreamTile } from '../components/stream-tile'
 import {
   Drawer,
@@ -37,7 +39,7 @@ import {
   DrawerTitle,
   DrawerTrigger
 } from '../components/ui/drawer'
-import { useStreams } from '../hooks/use-streams'
+import { useProfiles } from '../hooks/use-profiles'
 import { PROVIDER_ICONS } from '../providers'
 
 function StreamRow({
@@ -116,6 +118,9 @@ interface AdminDrawerProps {
   onAddingChange: (adding: boolean) => void
   onAdd: (providerId: StreamConfig['providerId'], channel: string) => Promise<void>
   onRemove: (id: string) => void
+  profileId: string
+  activeProfileName: string
+  onRename: (id: string, name: string) => void
 }
 
 function AdminDrawer({
@@ -127,8 +132,13 @@ function AdminDrawer({
   adding,
   onAddingChange,
   onAdd,
-  onRemove
+  onRemove,
+  profileId,
+  activeProfileName,
+  onRename
 }: AdminDrawerProps): React.JSX.Element {
+  const [saveOpen, setSaveOpen] = useState(false)
+
   return (
     <Drawer open={open} onOpenChange={onOpenChange} swipeDirection="right">
       {trigger && <DrawerTrigger className={triggerClassName}>{trigger}</DrawerTrigger>}
@@ -173,10 +183,25 @@ function AdminDrawer({
               Añadir stream
             </button>
           )}
+          <button
+            onClick={() => setSaveOpen(true)}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-surface px-6 py-3 text-sm font-semibold text-white/70 transition hover:bg-surface hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-[0.97]"
+          >
+            <Save size={18} aria-hidden="true" />
+            Guardar perfil
+          </button>
           <DrawerClose className="inline-flex items-center justify-center gap-2 rounded-xl bg-surface px-6 py-3 text-sm font-semibold text-white/70 transition hover:bg-surface hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-[0.97]">
             Cerrar
           </DrawerClose>
         </DrawerFooter>
+        {saveOpen && (
+          <ProfileSaveDialog
+            open={saveOpen}
+            onOpenChange={setSaveOpen}
+            profileName={activeProfileName}
+            onSave={(name) => onRename(profileId, name)}
+          />
+        )}
       </DrawerContent>
     </Drawer>
   )
@@ -186,11 +211,23 @@ export function HomePage(): React.JSX.Element {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [addingStream, setAddingStream] = useState(false)
   const [edit, setEdit] = useState(false)
-  const { streams, addStream, removeStream, updateLayout } = useStreams()
+  const {
+    activeStreams: streams,
+    addStream,
+    removeStream,
+    updateLayout,
+    profiles,
+    activeProfileId,
+    setActive,
+    createProfile,
+    removeProfile,
+    renameProfile
+  } = useProfiles()
   const { containerRef } = useContainerWidth()
   const [mounted, setMounted] = useState(false)
   const [width, setWidth] = useState(0)
   const hasStreams = streams.length > 0
+  const activeProfile = profiles.find((p) => p.id === activeProfileId) ?? profiles[0]
 
   useEffect(() => {
     const el = containerRef.current
@@ -296,7 +333,15 @@ export function HomePage(): React.JSX.Element {
   }, [streams, computeBounds, mounted, width, hideViews])
 
   useEffect(() => {
-    if (!mounted || width <= 0 || streams.length === 0) return
+    if (syncTimer.current !== null) {
+      window.clearTimeout(syncTimer.current)
+      syncTimer.current = null
+    }
+    pendingSync.current = null
+  }, [activeProfileId])
+
+  useEffect(() => {
+    if (!mounted || width <= 0) return
     void window.api.views.sync({
       streams,
       bounds: computeBounds(),
@@ -306,7 +351,7 @@ export function HomePage(): React.JSX.Element {
 
   useEffect(() => {
     const el = containerRef.current
-    if (!el || streams.length === 0) return
+    if (!el) return
     const onScroll = (): void => {
       void window.api.views.sync({
         streams,
@@ -418,14 +463,28 @@ export function HomePage(): React.JSX.Element {
     adding: addingStream,
     onAddingChange: setAddingStream,
     onAdd: addStream,
-    onRemove: (id: string) => void removeStream(id)
+    onRemove: (id: string) => void removeStream(id),
+    profileId: activeProfileId,
+    activeProfileName: activeProfile?.name ?? '',
+    onRename: (id: string, name: string) => void renameProfile(id, name)
   }
 
   return (
     <div className="flex h-screen w-screen flex-col overflow-hidden bg-canvas text-white">
-      <header className="flex shrink-0 items-center justify-between gap-4 border-b border-white/10 px-4 py-3">
-        <h1 className="text-2xl font-extrabold uppercase tracking-tight text-white">streamgrid</h1>
-        <nav className="flex items-center gap-2">
+      <header className="flex shrink-0 items-center border-b border-white/10 px-4 py-3">
+        <div className="flex min-w-0 items-center gap-4">
+          <h1 className="shrink-0 text-2xl font-extrabold uppercase tracking-tight text-white">
+            streamgrid
+          </h1>
+          <ProfileTabs
+            profiles={profiles}
+            activeProfileId={activeProfileId}
+            onSelect={(id) => void setActive(id)}
+            onRemove={(id) => void removeProfile(id)}
+            onCreate={() => createProfile('')}
+          />
+        </div>
+        <nav className="ml-auto flex items-center gap-2">
           {streams.length > 0 && (
             <button
               onClick={() => setEdit((value) => !value)}
@@ -451,15 +510,14 @@ export function HomePage(): React.JSX.Element {
           <Link to="/account" aria-label="Account" title="Account" className={navButtonClass}>
             <UserRound size={20} aria-hidden="true" />
           </Link>
-          <Link to="/settings" aria-label="Settings" title="Settings" className={navButtonClass}>
-            <Settings size={20} aria-hidden="true" />
-          </Link>
         </nav>
       </header>
 
       {streams.length === 0 ? (
         <main className="flex min-h-0 w-full flex-1 flex-col items-center justify-center gap-10 text-center">
-          <h1 className="text-5xl font-extrabold uppercase tracking-tight text-white">streamgrid</h1>
+          <h1 className="text-5xl font-extrabold uppercase tracking-tight text-white">
+            streamgrid
+          </h1>
           <AdminDrawer
             trigger={emptyTrigger}
             triggerClassName="inline-flex items-center gap-2 rounded-xl bg-surface px-6 py-3 text-sm font-semibold text-white transition hover:bg-surface/70 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-[0.97]"

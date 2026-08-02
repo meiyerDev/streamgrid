@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 import type { ProviderId, ProviderSession } from '../shared/providers'
-import type { StreamConfig, StreamLayout } from '../shared/streams'
+import type { ProfilesStore, StreamConfig, StreamLayout } from '../shared/streams'
 import type { ViewsSyncPayload } from '../shared/views'
 
 // Custom APIs for renderer
@@ -11,8 +11,15 @@ const api = {
     detect: (id: ProviderId): Promise<ProviderSession> => ipcRenderer.invoke('sessions:detect', id),
     logout: (id: ProviderId): Promise<void> => ipcRenderer.invoke('sessions:logout', id)
   },
+  profiles: {
+    list: (): Promise<ProfilesStore> => ipcRenderer.invoke('profiles:list'),
+    create: (name: string): Promise<ProfilesStore> => ipcRenderer.invoke('profiles:create', name),
+    rename: (id: string, name: string): Promise<ProfilesStore> =>
+      ipcRenderer.invoke('profiles:rename', id, name),
+    remove: (id: string): Promise<ProfilesStore> => ipcRenderer.invoke('profiles:remove', id),
+    setActive: (id: string): Promise<ProfilesStore> => ipcRenderer.invoke('profiles:setActive', id)
+  },
   streams: {
-    list: (): Promise<StreamConfig[]> => ipcRenderer.invoke('streams:list'),
     add: (input: { providerId: ProviderId; channel: string }): Promise<StreamConfig[]> =>
       ipcRenderer.invoke('streams:add', input),
     remove: (id: string): Promise<StreamConfig[]> => ipcRenderer.invoke('streams:remove', id),

@@ -5,6 +5,7 @@
 Electron 39 + React 19 + TypeScript, built with `electron-vite`. Package manager is **pnpm** (`.npmrc` has `shamefully-hoist=true`; don't introduce npm/yarn).
 
 Three independent processes, each with its own bundle and tsconfig:
+
 - `src/main/` — Electron main process (`tsconfig.node.json`)
 - `src/preload/` — preload bridge, exposed to the renderer as `window.electron` / `window.api` (`tsconfig.node.json`)
 - `src/renderer/` — React app (`tsconfig.web.json`), alias `@renderer/*` → `src/renderer/src` (Vite + tsconfig.web only, not node configs)

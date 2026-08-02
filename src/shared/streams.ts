@@ -15,6 +15,17 @@ export interface StreamConfig {
   layout?: StreamLayout
 }
 
+export interface StreamProfile {
+  id: string
+  name: string
+  streams: StreamConfig[]
+}
+
+export interface ProfilesStore {
+  activeProfileId: string
+  profiles: StreamProfile[]
+}
+
 export const GRID_COLS = 12
 export const MAX_GRID_COLS = 48
 export const MIN_GRID_COL_WIDTH = 160

@@ -3,7 +3,7 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { registerSessionHandlers } from './sessions'
-import { registerStreamHandlers } from './streams'
+import { registerProfileHandlers } from './profiles'
 import { attachViewManager, registerViewHandlers } from './stream-views'
 
 function createWindow(): BrowserWindow {
@@ -67,7 +67,7 @@ app.whenReady().then(() => {
   ipcMain.on('ping', () => console.log('pong'))
 
   registerSessionHandlers()
-  registerStreamHandlers()
+  registerProfileHandlers()
   registerViewHandlers()
 
   createWindow()
