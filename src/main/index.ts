@@ -4,7 +4,8 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { registerSessionHandlers } from './sessions'
 import { registerProfileHandlers } from './profiles'
-import { attachViewManager, registerViewHandlers } from './stream-views'
+import { registerSettingsHandlers, applySettings, getSettings } from './settings'
+import { attachViewManager, registerViewHandlers, applyMasterVolume } from './stream-views'
 
 function createWindow(): BrowserWindow {
   // Create the browser window.
@@ -30,6 +31,7 @@ function createWindow(): BrowserWindow {
   mainWindow.on('unmaximize', () => mainWindow?.webContents.send('window:resized'))
 
   mainWindow.on('ready-to-show', () => {
+    applySettings(mainWindow)
     mainWindow.show()
   })
 
@@ -66,9 +68,24 @@ app.whenReady().then(() => {
   // IPC test
   ipcMain.on('ping', () => console.log('pong'))
 
+  ipcMain.handle('app:quit', () => {
+    const win = BrowserWindow.getAllWindows()[0]
+    win?.close()
+  })
+
   registerSessionHandlers()
   registerProfileHandlers()
   registerViewHandlers()
+
+  let lastSettings = getSettings()
+  registerSettingsHandlers((settings) => {
+    if (settings.masterVolume !== lastSettings.masterVolume) applyMasterVolume()
+    if (settings.displayMode !== lastSettings.displayMode) {
+      const win = BrowserWindow.getAllWindows()[0]
+      if (win) applySettings(win)
+    }
+    lastSettings = settings
+  })
 
   createWindow()
 

@@ -8,7 +8,7 @@ import {
   type ReactNode
 } from 'react'
 import { Link } from '@tanstack/react-router'
-import { Check, LayoutGrid, Pencil, Save, UserRound, X } from 'lucide-react'
+import { Check, LayoutGrid, Pencil, Save, Settings2, UserRound, X } from 'lucide-react'
 import ReactGridLayout, { useContainerWidth, type Layout, type LayoutItem } from 'react-grid-layout'
 import 'react-grid-layout/css/styles.css'
 import { getProvider } from '../../../shared/providers'
@@ -29,6 +29,7 @@ import { AddStreamForm } from '../components/add-stream-form'
 import { ProfileSaveDialog } from '../components/profile-save-dialog'
 import { ProfileTabs } from '../components/profile-tabs'
 import { StreamTile } from '../components/stream-tile'
+import { SettingsDrawer } from '../components/settings-drawer'
 import {
   Drawer,
   DrawerClose,
@@ -211,6 +212,7 @@ export function HomePage(): React.JSX.Element {
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [addingStream, setAddingStream] = useState(false)
   const [edit, setEdit] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const {
     activeStreams: streams,
     addStream,
@@ -313,7 +315,7 @@ export function HomePage(): React.JSX.Element {
   const syncTimer = useRef<number | null>(null)
   const pendingSync = useRef<ViewsSyncPayload | null>(null)
 
-  const hideViews = edit || drawerOpen
+  const hideViews = edit || drawerOpen || settingsOpen
 
   const pushSync = useCallback(() => {
     pendingSync.current = {
@@ -507,6 +509,14 @@ export function HomePage(): React.JSX.Element {
           >
             <LayoutGrid size={20} aria-hidden="true" />
           </button>
+          <button
+            onClick={() => setSettingsOpen(true)}
+            aria-label="Ajustes"
+            title="Ajustes"
+            className={navButtonClass}
+          >
+            <Settings2 size={20} aria-hidden="true" />
+          </button>
           <Link to="/account" aria-label="Account" title="Account" className={navButtonClass}>
             <UserRound size={20} aria-hidden="true" />
           </Link>
@@ -556,6 +566,7 @@ export function HomePage(): React.JSX.Element {
           <AdminDrawer {...drawerProps} />
         </div>
       )}
+      <SettingsDrawer open={settingsOpen} onOpenChange={setSettingsOpen} />
     </div>
   )
 }

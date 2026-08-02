@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 import type { ProviderId, ProviderSession } from '../shared/providers'
 import type { ProfilesStore, StreamConfig, StreamLayout } from '../shared/streams'
+import type { AppSettings, DisplayInfo } from '../shared/settings'
 import type { ViewsSyncPayload } from '../shared/views'
 
 // Custom APIs for renderer
@@ -25,6 +26,15 @@ const api = {
     remove: (id: string): Promise<StreamConfig[]> => ipcRenderer.invoke('streams:remove', id),
     updateLayout: (id: string, layout: StreamLayout): Promise<StreamConfig[]> =>
       ipcRenderer.invoke('streams:updateLayout', id, layout)
+  },
+  settings: {
+    get: (): Promise<AppSettings> => ipcRenderer.invoke('settings:get'),
+    set: (patch: Partial<AppSettings>): Promise<AppSettings> =>
+      ipcRenderer.invoke('settings:set', patch),
+    listDisplays: (): Promise<DisplayInfo[]> => ipcRenderer.invoke('displays:list')
+  },
+  app: {
+    quit: (): Promise<void> => ipcRenderer.invoke('app:quit')
   },
   views: {
     sync: (payload: ViewsSyncPayload): Promise<void> => ipcRenderer.invoke('views:sync', payload),

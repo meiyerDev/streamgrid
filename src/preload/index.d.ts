@@ -1,6 +1,7 @@
 import { ElectronAPI } from '@electron-toolkit/preload'
 import type { ProviderId, ProviderSession } from '../shared/providers'
 import type { ProfilesStore, StreamConfig, StreamLayout } from '../shared/streams'
+import type { AppSettings, DisplayInfo } from '../shared/settings'
 import type { ViewsSyncPayload } from '../shared/views'
 
 declare global {
@@ -24,9 +25,17 @@ declare global {
         remove: (id: string) => Promise<StreamConfig[]>
         updateLayout: (id: string, layout: StreamLayout) => Promise<StreamConfig[]>
       }
+      settings: {
+        get: () => Promise<AppSettings>
+        set: (patch: Partial<AppSettings>) => Promise<AppSettings>
+        listDisplays: () => Promise<DisplayInfo[]>
+      }
       views: {
         sync: (payload: ViewsSyncPayload) => Promise<void>
         onResized: (cb: () => void) => () => void
+      }
+      app: {
+        quit: () => Promise<void>
       }
     }
   }

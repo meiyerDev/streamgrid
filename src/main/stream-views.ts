@@ -1,5 +1,6 @@
 import { BrowserWindow, ipcMain, shell, WebContentsView } from 'electron'
 import { getProvider, type ProviderId } from '../shared/providers'
+import { getSettings } from './settings'
 import type { ViewBounds, ViewsSyncPayload } from '../shared/views'
 
 function playerUrl(providerId: ProviderId, channel: string): string {
@@ -48,27 +49,70 @@ function createView(id: string, providerId: ProviderId, channel: string): void {
     return { action: 'deny' }
   })
 
+  view.webContents.on('did-finish-load', () => {
+    applyVolume(id)
+  })
+
   mainWindow.contentView.addChildView(view)
   views.set(id, view)
   void view.webContents.loadURL(playerUrl(providerId, channel))
 }
 
+function applyVolume(id: string): void {
+  const view = views.get(id)
+  if (!view) return
+  const volume = Math.max(0, Math.min(1, getSettings().masterVolume / 100))
+  const script = `(() => {
+    window.__sgMasterVolume = ${volume}
+    const set = (el) => {
+      if (!el.__sgHooked) {
+        el.__sgHooked = true
+        el.addEventListener('volumechange', () => { el.volume = window.__sgMasterVolume })
+      }
+      el.volume = window.__sgMasterVolume
+    }
+    document.querySelectorAll('video, audio').forEach(set)
+    new MutationObserver((muts) => {
+      for (const mut of muts) {
+        for (const node of mut.addedNodes) {
+          if (node.nodeType === 1) {
+            if (node.matches('video, audio')) set(node)
+            document.querySelectorAll('video, audio').forEach(set)
+          }
+        }
+      }
+    }).observe(document, { childList: true, subtree: true })
+  })()`
+  void view.webContents.executeJavaScript(script).catch(() => undefined)
+}
+
+export function applyMasterVolume(): void {
+  for (const id of views.keys()) applyVolume(id)
+}
+
 function destroyView(id: string): void {
   const view = views.get(id)
   if (!view) return
-  mainWindow?.contentView.removeChildView(view)
-  view.webContents.close()
+  if (mainWindow && !mainWindow.isDestroyed() && !view.webContents.isDestroyed()) {
+    mainWindow.contentView.removeChildView(view)
+    view.webContents.close()
+  }
   views.delete(id)
   lastBounds.delete(id)
 }
 
 function destroyAllViews(): void {
   for (const id of [...views.keys()]) destroyView(id)
+  views.clear()
+  lastBounds.clear()
 }
 
 export function attachViewManager(win: BrowserWindow): void {
   mainWindow = win
-  win.on('closed', destroyAllViews)
+  win.on('close', destroyAllViews)
+  win.on('closed', () => {
+    mainWindow = null
+  })
 }
 
 function syncViews(payload: ViewsSyncPayload): void {
@@ -83,7 +127,7 @@ function syncViews(payload: ViewsSyncPayload): void {
   for (const stream of payload.streams) {
     if (!views.has(stream.id)) createView(stream.id, stream.providerId, stream.channel)
     const view = views.get(stream.id)
-    if (!view) continue
+    if (!view || view.webContents.isDestroyed()) continue
 
     const bounds = payload.bounds[stream.id]
     if (bounds) {
