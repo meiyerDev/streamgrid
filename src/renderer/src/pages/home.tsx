@@ -424,7 +424,7 @@ export function HomePage(): React.JSX.Element {
   return (
     <div className="flex h-screen w-screen flex-col overflow-hidden bg-canvas text-white">
       <header className="flex shrink-0 items-center justify-between gap-4 border-b border-white/10 px-4 py-3">
-        <h1 className="text-2xl font-extrabold uppercase tracking-tight text-white">Streams</h1>
+        <h1 className="text-2xl font-extrabold uppercase tracking-tight text-white">streamgrid</h1>
         <nav className="flex items-center gap-2">
           {streams.length > 0 && (
             <button
@@ -459,7 +459,7 @@ export function HomePage(): React.JSX.Element {
 
       {streams.length === 0 ? (
         <main className="flex min-h-0 w-full flex-1 flex-col items-center justify-center gap-10 text-center">
-          <h1 className="text-5xl font-extrabold uppercase tracking-tight text-white">Streams</h1>
+          <h1 className="text-5xl font-extrabold uppercase tracking-tight text-white">streamgrid</h1>
           <AdminDrawer
             trigger={emptyTrigger}
             triggerClassName="inline-flex items-center gap-2 rounded-xl bg-surface px-6 py-3 text-sm font-semibold text-white transition hover:bg-surface/70 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-[0.97]"
