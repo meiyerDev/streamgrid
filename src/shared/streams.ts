@@ -16,6 +16,8 @@ export interface StreamConfig {
 }
 
 export const GRID_COLS = 12
+export const MAX_GRID_COLS = 48
+export const MIN_GRID_COL_WIDTH = 160
 export const GRID_ROW_HEIGHT = 30
 export const GRID_MARGIN: [number, number] = [8, 8]
 
@@ -24,7 +26,6 @@ export const DEFAULT_STREAM_H = 10
 
 export const MIN_STREAM_W = 3
 export const MIN_STREAM_H = 3
-export const MAX_STREAM_W = GRID_COLS
 
 export function defaultStreamLayout(streams: StreamConfig[]): StreamLayout {
   const maxBottom = streams.reduce(

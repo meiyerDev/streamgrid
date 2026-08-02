@@ -57,3 +57,22 @@ body {
   border-color: var(--color-green);
   transform: scale(1.25);
 }
+
+.react-grid-layout.grid-lines {
+  background-image:
+    repeating-linear-gradient(
+      to right,
+      transparent 0,
+      transparent calc(var(--grid-pitch-x) - 1px),
+      var(--grid-line) calc(var(--grid-pitch-x) - 1px),
+      var(--grid-line) var(--grid-pitch-x)
+    ),
+    repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent calc(var(--grid-pitch-y) - 1px),
+      var(--grid-line) calc(var(--grid-pitch-y) - 1px),
+      var(--grid-line) var(--grid-pitch-y)
+    );
+  background-position: var(--grid-pad) var(--grid-pad);
+}

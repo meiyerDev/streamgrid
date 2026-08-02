@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode
+} from 'react'
 import { Link } from '@tanstack/react-router'
 import { Check, LayoutGrid, Pencil, Settings, UserRound, X } from 'lucide-react'
 import ReactGridLayout, { useContainerWidth, type Layout, type LayoutItem } from 'react-grid-layout'
@@ -6,11 +14,11 @@ import 'react-grid-layout/css/styles.css'
 import { getProvider } from '../../../shared/providers'
 import {
   DEFAULT_STREAM_H,
-  DEFAULT_STREAM_W,
   GRID_COLS,
   GRID_MARGIN,
   GRID_ROW_HEIGHT,
-  MAX_STREAM_W,
+  MAX_GRID_COLS,
+  MIN_GRID_COL_WIDTH,
   MIN_STREAM_H,
   MIN_STREAM_W,
   type StreamConfig,
@@ -71,8 +79,9 @@ function fitRowHeight(rows: number, availableHeight: number): number {
   return Math.min(rh, GRID_ROW_HEIGHT)
 }
 
-function buildGridLayout(streams: StreamConfig[]): Layout {
+function buildGridLayout(streams: StreamConfig[], cols: number): Layout {
   const layout: LayoutItem[] = []
+  const defaultW = Math.max(MIN_STREAM_W, Math.round(cols / 2))
   let bottom = 0
   for (const stream of streams) {
     if (stream.layout) {
@@ -83,30 +92,16 @@ function buildGridLayout(streams: StreamConfig[]): Layout {
         i: stream.id,
         x: 0,
         y: bottom,
-        w: DEFAULT_STREAM_W,
+        w: defaultW,
         h: DEFAULT_STREAM_H
       })
       bottom += DEFAULT_STREAM_H
     }
   }
-  const maxBottom = layout.reduce((max, item) => Math.max(max, item.y + item.h), 0)
-  const customizedById = new Map(
-    streams.map((stream) => [stream.id, stream.layout?.customized ?? false])
-  )
   for (const item of layout) {
     item.minW = MIN_STREAM_W
     item.minH = MIN_STREAM_H
-    item.maxW = MAX_STREAM_W
-    const coveredBelow = layout.some(
-      (other) =>
-        other.i !== item.i &&
-        other.y >= item.y + item.h &&
-        other.x < item.x + item.w &&
-        other.x + other.w > item.x
-    )
-    if (!customizedById.get(item.i) && !coveredBelow && item.y + item.h < maxBottom) {
-      item.h = maxBottom - item.y
-    }
+    item.maxW = cols
   }
   return layout
 }
@@ -192,9 +187,40 @@ export function HomePage(): React.JSX.Element {
   const [addingStream, setAddingStream] = useState(false)
   const [edit, setEdit] = useState(false)
   const { streams, addStream, removeStream, updateLayout } = useStreams()
-  const { width, containerRef, mounted } = useContainerWidth()
+  const { containerRef } = useContainerWidth()
+  const [mounted, setMounted] = useState(false)
+  const [width, setWidth] = useState(0)
+  const hasStreams = streams.length > 0
 
-  const gridLayout = useMemo(() => buildGridLayout(streams), [streams])
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const measure = (): void => {
+      setWidth((prev) => (prev === el.clientWidth ? prev : el.clientWidth))
+      setMounted(true)
+    }
+    measure()
+    if (typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(measure)
+    observer.observe(el)
+    return () => {
+      observer.disconnect()
+      setMounted(false)
+    }
+  }, [containerRef, hasStreams])
+
+  const cols = useMemo(
+    () =>
+      width > 0
+        ? Math.max(
+            GRID_COLS,
+            Math.min(MAX_GRID_COLS, Math.floor((width + GRID_MARGIN[0]) / MIN_GRID_COL_WIDTH))
+          )
+        : GRID_COLS,
+    [width]
+  )
+
+  const gridLayout = useMemo(() => buildGridLayout(streams, cols), [streams, cols])
 
   const maxRows = useMemo(
     () => Math.max(0, ...gridLayout.map((item) => item.y + item.h)),
@@ -204,6 +230,18 @@ export function HomePage(): React.JSX.Element {
   const [height, setHeight] = useState(0)
 
   const rowHeight = useMemo(() => fitRowHeight(maxRows, height), [maxRows, height])
+
+  const gridStyle = useMemo<CSSProperties>(() => {
+    const pitchX =
+      (width - (cols - 1) * GRID_MARGIN[0] - GRID_MARGIN[0] * 2) / cols + GRID_MARGIN[0]
+    const pitchY = rowHeight + GRID_MARGIN[1]
+    return {
+      '--grid-pitch-x': `${pitchX}px`,
+      '--grid-pitch-y': `${pitchY}px`,
+      '--grid-pad': `${GRID_MARGIN[0]}px`,
+      '--grid-line': 'rgba(139, 150, 255, 0.22)'
+    } as CSSProperties
+  }, [width, rowHeight, cols])
 
   useEffect(() => {
     const el = containerRef.current
@@ -279,47 +317,73 @@ export function HomePage(): React.JSX.Element {
   }, [mounted, streams, computeBounds, hideViews, containerRef])
 
   useEffect(() => {
-    return () => {
-      if (syncTimer.current !== null) window.clearTimeout(syncTimer.current)
-      void window.api.views.sync({ streams: [], bounds: {}, edit: false })
-    }
-  }, [])
-
-  const handleLayoutChange = useCallback(() => {
-    pushSync()
-  }, [pushSync])
+    if (!mounted || streams.length === 0) return
+    const unsubscribe = window.api.views.onResized(() => pushSync())
+    return unsubscribe
+  }, [mounted, streams.length, pushSync])
 
   const persistLayout = useCallback(
-    async (layout: Layout, resized?: boolean) => {
+    async (layout: Layout) => {
       await Promise.all(
-        layout.map((item) => {
-          const current = streams.find((stream) => stream.id === item.i)
-          return updateLayout(item.i, {
+        layout.map((item) =>
+          updateLayout(item.i, {
             x: item.x,
             y: item.y,
             w: item.w,
             h: item.h,
-            customized: resized ? true : (current?.layout?.customized ?? false)
+            customized: true
           } satisfies StreamLayout)
-        })
+        )
       )
     },
-    [streams, updateLayout]
+    [updateLayout]
+  )
+
+  const persistTimer = useRef<number | null>(null)
+  const pendingLayout = useRef<Layout | null>(null)
+
+  const flushPersist = useCallback(() => {
+    if (persistTimer.current !== null) {
+      window.clearTimeout(persistTimer.current)
+      persistTimer.current = null
+    }
+    const layout = pendingLayout.current
+    pendingLayout.current = null
+    if (layout) void persistLayout(layout)
+  }, [persistLayout])
+
+  useEffect(() => {
+    return () => {
+      flushPersist()
+      if (syncTimer.current !== null) window.clearTimeout(syncTimer.current)
+      void window.api.views.sync({ streams: [], bounds: {}, edit: false })
+    }
+  }, [flushPersist])
+
+  const handleLayoutChange = useCallback(
+    (layout: Layout) => {
+      pushSync()
+      pendingLayout.current = layout
+      if (persistTimer.current !== null) return
+      persistTimer.current = window.setTimeout(() => {
+        persistTimer.current = null
+        const next = pendingLayout.current
+        pendingLayout.current = null
+        if (next) void persistLayout(next)
+      }, 200)
+    },
+    [pushSync, persistLayout]
   )
 
   const handleDragStop = useCallback(
     (layout: Layout) => {
-      void persistLayout(layout)
+      pendingLayout.current = layout
+      flushPersist()
     },
-    [persistLayout]
+    [flushPersist]
   )
 
-  const handleResizeStop = useCallback(
-    (layout: Layout) => {
-      void persistLayout(layout, true)
-    },
-    [persistLayout]
-  )
+  const handleResizeStop = handleDragStop
 
   const navButtonClass =
     'flex size-10 items-center justify-center rounded-lg bg-surface/40 text-white/70 transition-colors hover:bg-surface hover:text-white'
@@ -392,8 +456,10 @@ export function HomePage(): React.JSX.Element {
             <ReactGridLayout
               width={width}
               layout={gridLayout}
+              className={edit ? 'grid-lines' : undefined}
+              style={gridStyle}
               gridConfig={{
-                cols: GRID_COLS,
+                cols,
                 rowHeight,
                 margin: GRID_MARGIN
               }}

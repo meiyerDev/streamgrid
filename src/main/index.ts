@@ -23,6 +23,10 @@ function createWindow(): BrowserWindow {
 
   attachViewManager(mainWindow)
 
+  mainWindow.on('resize', () => {
+    mainWindow?.webContents.send('window:resized')
+  })
+
   mainWindow.on('ready-to-show', () => {
     mainWindow.show()
   })

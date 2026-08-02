@@ -20,7 +20,12 @@ const api = {
       ipcRenderer.invoke('streams:updateLayout', id, layout)
   },
   views: {
-    sync: (payload: ViewsSyncPayload): Promise<void> => ipcRenderer.invoke('views:sync', payload)
+    sync: (payload: ViewsSyncPayload): Promise<void> => ipcRenderer.invoke('views:sync', payload),
+    onResized: (cb: () => void): (() => void) => {
+      const listener = (): void => cb()
+      ipcRenderer.on('window:resized', listener)
+      return () => ipcRenderer.removeListener('window:resized', listener)
+    }
   }
 }
 

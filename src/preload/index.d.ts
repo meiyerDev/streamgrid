@@ -20,6 +20,7 @@ declare global {
       }
       views: {
         sync: (payload: ViewsSyncPayload) => Promise<void>
+        onResized: (cb: () => void) => () => void
       }
     }
   }

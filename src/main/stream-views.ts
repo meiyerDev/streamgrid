@@ -1,6 +1,6 @@
 import { BrowserWindow, ipcMain, shell, WebContentsView } from 'electron'
 import { getProvider, type ProviderId } from '../shared/providers'
-import type { ViewsSyncPayload } from '../shared/views'
+import type { ViewBounds, ViewsSyncPayload } from '../shared/views'
 
 function playerUrl(providerId: ProviderId, channel: string): string {
   const def = getProvider(providerId)
@@ -11,8 +11,22 @@ function playerUrl(providerId: ProviderId, channel: string): string {
   return ''
 }
 
+function roundRect(bounds: ViewBounds): ViewBounds {
+  return {
+    x: Math.round(bounds.x),
+    y: Math.round(bounds.y),
+    width: Math.round(bounds.width),
+    height: Math.round(bounds.height)
+  }
+}
+
+function sameBounds(a: ViewBounds, b: ViewBounds): boolean {
+  return a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height
+}
+
 let mainWindow: BrowserWindow | null = null
 const views = new Map<string, WebContentsView>()
+const lastBounds = new Map<string, ViewBounds>()
 
 function createView(id: string, providerId: ProviderId, channel: string): void {
   if (!mainWindow) return
@@ -45,6 +59,7 @@ function destroyView(id: string): void {
   mainWindow?.contentView.removeChildView(view)
   view.webContents.close()
   views.delete(id)
+  lastBounds.delete(id)
 }
 
 function destroyAllViews(): void {
@@ -72,12 +87,12 @@ function syncViews(payload: ViewsSyncPayload): void {
 
     const bounds = payload.bounds[stream.id]
     if (bounds) {
-      view.setBounds({
-        x: Math.round(bounds.x),
-        y: Math.round(bounds.y),
-        width: Math.round(bounds.width),
-        height: Math.round(bounds.height)
-      })
+      const rounded = roundRect(bounds)
+      const prev = lastBounds.get(stream.id)
+      view.setBounds(rounded)
+      const changed = !prev || !sameBounds(prev, rounded)
+      if (changed) view.webContents.invalidate()
+      lastBounds.set(stream.id, rounded)
     }
     view.setVisible(!payload.edit)
   }
