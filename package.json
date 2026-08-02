@@ -2,10 +2,10 @@
   "name": "stream-grid",
   "version": "1.0.0",
   "license": "SEE LICENSE IN LICENSE",
-  "description": "An Electron application with React and TypeScript",
+  "description": "StreamGrid — gestor de mosaicos de streams en vivo",
   "main": "./out/main/index.js",
-  "author": "example.com",
-  "homepage": "https://electron-vite.org",
+  "author": "MeiDev",
+  "homepage": "https://github.com/meiyerDev/streamgrid",
   "scripts": {
     "format": "prettier --write .",
     "lint": "eslint --cache .",

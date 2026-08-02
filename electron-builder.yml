@@ -1,5 +1,5 @@
-appId: com.electron.app
-productName: stream-grid
+appId: com.streamgrid.app
+productName: StreamGrid
 directories:
   buildResources: build
 files:
@@ -32,11 +32,11 @@ linux:
   target:
     - AppImage
     - deb
-  maintainer: electronjs.org
-  category: Utility
+  maintainer: MeiDev <streamgrid@neustandx.com>
+  category: AudioVideo
 appImage:
   artifactName: ${name}-${version}.${ext}
 npmRebuild: false
 publish:
   provider: generic
-  url: https://example.com/auto-updates
+  url: https://github.com/meiyerDev/streamgrid/releases/download/latest
