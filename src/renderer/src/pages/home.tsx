@@ -61,6 +61,16 @@ function StreamRow({
   )
 }
 
+function fitRowHeight(rows: number, availableHeight: number): number {
+  if (rows <= 0 || availableHeight <= 0) return GRID_ROW_HEIGHT
+  const marginY = GRID_MARGIN[1]
+  let rh = Math.floor((availableHeight - (rows + 1) * marginY) / rows)
+  if (rh < 1) {
+    rh = Math.max(1, Math.floor((availableHeight - 2) / rows))
+  }
+  return Math.min(rh, GRID_ROW_HEIGHT)
+}
+
 function buildGridLayout(streams: StreamConfig[]): Layout {
   const layout: LayoutItem[] = []
   let bottom = 0
@@ -186,7 +196,14 @@ export function HomePage(): React.JSX.Element {
 
   const gridLayout = useMemo(() => buildGridLayout(streams), [streams])
 
+  const maxRows = useMemo(
+    () => Math.max(0, ...gridLayout.map((item) => item.y + item.h)),
+    [gridLayout]
+  )
+
   const [height, setHeight] = useState(0)
+
+  const rowHeight = useMemo(() => fitRowHeight(maxRows, height), [maxRows, height])
 
   useEffect(() => {
     const el = containerRef.current
@@ -370,14 +387,14 @@ export function HomePage(): React.JSX.Element {
           />
         </main>
       ) : (
-        <div ref={containerRef} className="min-h-0 w-full flex-1 overflow-y-auto">
+        <div ref={containerRef} className="min-h-0 w-full flex-1 overflow-hidden">
           {mounted && width > 0 && height > 0 && (
             <ReactGridLayout
               width={width}
               layout={gridLayout}
               gridConfig={{
                 cols: GRID_COLS,
-                rowHeight: GRID_ROW_HEIGHT,
+                rowHeight,
                 margin: GRID_MARGIN
               }}
               dragConfig={{ enabled: edit, handle: '.stream-tile-drag-handle' }}

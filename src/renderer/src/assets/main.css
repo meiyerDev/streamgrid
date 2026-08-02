@@ -18,6 +18,14 @@ body {
   @apply relative bg-canvas text-white antialiased;
 }
 
+* {
+  scrollbar-width: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
+}
+
 .react-grid-layout .react-grid-item > .react-resizable-handle {
   position: absolute;
   width: 26px;
