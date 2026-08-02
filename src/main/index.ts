@@ -26,6 +26,8 @@ function createWindow(): BrowserWindow {
   mainWindow.on('resize', () => {
     mainWindow?.webContents.send('window:resized')
   })
+  mainWindow.on('maximize', () => mainWindow?.webContents.send('window:resized'))
+  mainWindow.on('unmaximize', () => mainWindow?.webContents.send('window:resized'))
 
   mainWindow.on('ready-to-show', () => {
     mainWindow.show()

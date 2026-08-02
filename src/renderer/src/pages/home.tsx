@@ -281,7 +281,7 @@ export function HomePage(): React.JSX.Element {
   const pushSync = useCallback(() => {
     pendingSync.current = {
       streams,
-      bounds: computeBounds(),
+      bounds: {},
       edit: hideViews
     }
     if (syncTimer.current !== null) return
@@ -289,7 +289,9 @@ export function HomePage(): React.JSX.Element {
       syncTimer.current = null
       const payload = pendingSync.current
       pendingSync.current = null
-      if (payload && mounted && width > 0) void window.api.views.sync(payload)
+      if (payload && mounted && width > 0) {
+        void window.api.views.sync({ ...payload, bounds: computeBounds() })
+      }
     }, 100)
   }, [streams, computeBounds, mounted, width, hideViews])
 
@@ -318,7 +320,21 @@ export function HomePage(): React.JSX.Element {
 
   useEffect(() => {
     if (!mounted || streams.length === 0) return
-    const unsubscribe = window.api.views.onResized(() => pushSync())
+    let frames = 0
+    const onResized = (): void => {
+      // double rAF to guarantee the grid has reflowed to the new layout
+      frames = 2
+      const tick = (): void => {
+        frames -= 1
+        if (frames > 0) {
+          requestAnimationFrame(tick)
+        } else {
+          pushSync()
+        }
+      }
+      requestAnimationFrame(tick)
+    }
+    const unsubscribe = window.api.views.onResized(onResized)
     return unsubscribe
   }, [mounted, streams.length, pushSync])
 

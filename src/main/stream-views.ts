@@ -91,7 +91,11 @@ function syncViews(payload: ViewsSyncPayload): void {
       const prev = lastBounds.get(stream.id)
       view.setBounds(rounded)
       const changed = !prev || !sameBounds(prev, rounded)
-      if (changed) view.webContents.invalidate()
+      if (changed && !payload.edit) {
+        view.setVisible(false)
+        view.setBounds(rounded)
+        view.setVisible(true)
+      }
       lastBounds.set(stream.id, rounded)
     }
     view.setVisible(!payload.edit)
