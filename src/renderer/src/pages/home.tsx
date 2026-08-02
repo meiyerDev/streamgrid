@@ -8,7 +8,7 @@ import {
   type ReactNode
 } from 'react'
 import { Link } from '@tanstack/react-router'
-import { Check, LayoutGrid, Pencil, Save, Settings2, UserRound, X } from 'lucide-react'
+import { Check, LayoutGrid, Pencil, RefreshCcw, Save, Settings2, UserRound, X } from 'lucide-react'
 import ReactGridLayout, { useContainerWidth, type Layout, type LayoutItem } from 'react-grid-layout'
 import 'react-grid-layout/css/styles.css'
 import { getProvider } from '../../../shared/providers'
@@ -486,7 +486,16 @@ export function HomePage(): React.JSX.Element {
             onCreate={() => createProfile('')}
           />
         </div>
-        <nav className="ml-auto flex items-center gap-2">
+        <nav className="ml-auto flex items-center gap-2">{streams.length > 0 && (
+            <button
+              onClick={pushSync}
+              aria-label={'Refrescar mosaico'}
+              title={'Refrescar mosaico'}
+              className="flex size-10 items-center justify-center rounded-lg bg-blurple text-white transition-colors hover:bg-blurple/90"
+            >
+              <RefreshCcw size={20} aria-hidden="true" />
+            </button>
+          )}
           {streams.length > 0 && (
             <button
               onClick={() => setEdit((value) => !value)}
