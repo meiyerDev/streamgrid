@@ -15,6 +15,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Changed
+
+### Fixed
+
+### Removed
+
+## [1.0.0] - 2026-08-02
+
+### Added
+
 - **Live stream grid/mosaic**
   - Draggable and resizable grid of stream tiles with a responsive column count that adapts to the window size.
   - Edit mode with visual grid guide lines for rearranging tiles.
@@ -54,4 +64,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-[Unreleased]: https://github.com/meiyerDev/streamgrid/commits/main
+[Unreleased]: https://github.com/meiyerDev/streamgrid/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/meiyerDev/streamgrid/releases/tag/v1.0.0
