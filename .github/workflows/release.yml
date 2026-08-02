@@ -36,7 +36,17 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: app-${{ matrix.name }}
-          path: dist/*
+          path: |
+            dist/*.exe
+            dist/*.exe.blockmap
+            dist/*.dmg
+            dist/*.dmg.blockmap
+            dist/*.AppImage
+            dist/*.deb
+            dist/*.zip
+            dist/*.zip.blockmap
+            dist/*.yml
+            !dist/builder-debug.yml
           if-no-files-found: error
 
   release:
@@ -65,4 +75,4 @@ jobs:
         with:
           name: Release ${{ steps.version.outputs.version }}
           body: ${{ steps.changelog_reader.outputs.changes }}
-          files: dist/**/*
+          files: dist/*
