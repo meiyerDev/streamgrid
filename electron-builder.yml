@@ -32,9 +32,6 @@ dmg:
   artifactName: StreamGrid.${ext}
 linux:
   icon: resources/icon.png
-  arch:
-    - x64
-    - arm64
   target:
     - AppImage
     - deb
