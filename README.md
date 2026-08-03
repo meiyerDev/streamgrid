@@ -19,9 +19,17 @@ _Un overlay de streams de Twitch construido con Electron, React y TypeScript._
 
 ---
 
-## Screenshots / Capturas
+## Downloads / Descargas
 
-> All screenshots below are pending — add them as `docs/screenshots/*.png`. _Todas las capturas de abajo están pendientes — agregalas como `docs/screenshots/*.png`._
+[![Latest Release](https://img.shields.io/github/v/release/meiyerDev/streamgrid?color=purple&label=Versi%C3%B3n)](https://github.com/meiyerDev/streamgrid/releases/latest)
+
+[📥 Descargar última versión para Windows](https://github.com/meiyerDev/streamgrid/releases/latest/download/StreamGrid-Setup.exe)  
+[📥 Descargar última versión para Mac](https://github.com/meiyerDev/streamgrid/releases/latest/download/StreamGrid.dmg)  
+[📥 Descargar última versión para Linux](https://github.com/meiyerDev/streamgrid/releases/latest/download/StreamGrid-x86_64.AppImage)
+
+---
+
+## Screenshots / Capturas
 
 <!-- IMAGE: dashboard (docs/screenshots/dashboard.png) -->
 

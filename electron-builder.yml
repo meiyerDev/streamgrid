@@ -15,7 +15,7 @@ win:
   icon: resources/icon.png
   executableName: stream-grid
 nsis:
-  artifactName: ${name}-${version}-setup.${ext}
+  artifactName: StreamGrid-Setup.${ext}
   shortcutName: ${productName}
   uninstallDisplayName: ${productName}
   createDesktopShortcut: always
@@ -29,16 +29,21 @@ mac:
     - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
   notarize: false
 dmg:
-  artifactName: ${name}-${version}.${ext}
+  artifactName: StreamGrid.${ext}
 linux:
   icon: resources/icon.png
+  arch:
+    - x64
+    - arm64
   target:
     - AppImage
     - deb
   maintainer: MeiDev <streamgrid@neustandx.com>
   category: AudioVideo
 appImage:
-  artifactName: ${name}-${version}.${ext}
+  artifactName: StreamGrid-${arch}.${ext}
+deb:
+  artifactName: StreamGrid-${arch}.${ext}
 npmRebuild: false
 publish:
   provider: generic

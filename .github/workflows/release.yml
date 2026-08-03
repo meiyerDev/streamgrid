@@ -47,6 +47,8 @@ jobs:
             dist/*.zip.blockmap
             dist/*.yml
             !dist/builder-debug.yml
+            !dist/**/vk_swiftshader_icd.json
+            !dist/**/*swiftshader*
           if-no-files-found: error
 
   release:

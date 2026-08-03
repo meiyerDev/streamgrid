@@ -21,6 +21,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+## [1.0.1] - 2026-08-03
+
+### Added
+
+- **Packaging & distribution**
+  - Linux builds now ship both `x64` and `arm64` architectures (AppImage/deb).
+
+### Changed
+
+- **Packaging & distribution**
+  - Release artifacts now use stable, predictable filenames (`StreamGrid-Setup.exe`, `StreamGrid.dmg`, `StreamGrid-x64.AppImage`, `StreamGrid-${arch}.deb`) so the direct "latest release" download links in the README always resolve.
+- **Documentation**
+  - Added a Downloads section to the README with per-platform direct download links and a latest-version badge.
+  - Added the missing app screenshots (dashboard, editable grid, fullscreen).
+
+### Fixed
+
+- SwiftShader ICD/JSON files are no longer uploaded as GitHub release assets.
+
+### Removed
+
 ## [1.0.0] - 2026-08-02
 
 ### Added
@@ -64,5 +85,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-[Unreleased]: https://github.com/meiyerDev/streamgrid/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/meiyerDev/streamgrid/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/meiyerDev/streamgrid/releases/tag/v1.0.1
 [1.0.0]: https://github.com/meiyerDev/streamgrid/releases/tag/v1.0.0
