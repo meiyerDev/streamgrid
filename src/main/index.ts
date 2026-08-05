@@ -6,6 +6,7 @@ import { registerSessionHandlers } from './sessions'
 import { registerProfileHandlers } from './profiles'
 import { registerSettingsHandlers, applySettings, getSettings } from './settings'
 import { attachViewManager, registerViewHandlers, applyMasterVolume } from './stream-views'
+import { registerChatHandlers } from './chat-irc'
 
 function createWindow(): BrowserWindow {
   // Create the browser window.
@@ -76,6 +77,7 @@ app.whenReady().then(() => {
   registerSessionHandlers()
   registerProfileHandlers()
   registerViewHandlers()
+  registerChatHandlers()
 
   let lastSettings = getSettings()
   registerSettingsHandlers((settings) => {

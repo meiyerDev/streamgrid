@@ -1,6 +1,8 @@
 import { ipcMain, session } from 'electron'
 import {
+  CHAT_PROVIDER,
   getProvider,
+  type ChatSession,
   type ProviderDef,
   type ProviderId,
   type ProviderSession
@@ -8,14 +10,21 @@ import {
 
 const TWITCH_PUBLIC_CLIENT_ID = 'kimne78kx3ncx6brgo4mv6wki5h1ko'
 
+async function twitchCookies(partition: string): Promise<{ token?: string; username?: string }> {
+  const cookies = await session.fromPartition(partition).cookies.get({})
+  return {
+    token: cookies.find((cookie) => cookie.name === 'auth-token')?.value,
+    username: cookies.find((cookie) => cookie.name === 'auth-user')?.value
+  }
+}
+
 async function detectTwitch(def: ProviderDef): Promise<ProviderSession> {
   const base: ProviderSession = { providerId: def.id, loggedIn: false }
-  const cookies = await session.fromPartition(def.partition).cookies.get({})
-  const token = cookies.find((cookie) => cookie.name === 'auth-token')?.value
+  const { token } = await twitchCookies(def.partition)
 
   if (!token) return base
 
-  const fallbackUsername = cookies.find((cookie) => cookie.name === 'auth-user')?.value
+  const fallbackUsername = (await twitchCookies(def.partition)).username
 
   try {
     const response = await fetch('https://api.twitch.tv/helix/users', {
@@ -79,8 +88,49 @@ export async function logoutProvider(id: ProviderId): Promise<void> {
   await session.fromPartition(def.partition).clearStorageData()
 }
 
+export async function detectChat(): Promise<ChatSession> {
+  const { token } = await twitchCookies(CHAT_PROVIDER.partition)
+  if (!token) return { loggedIn: false }
+
+  const fallbackUsername = (await twitchCookies(CHAT_PROVIDER.partition)).username
+
+  try {
+    const response = await fetch('https://api.twitch.tv/helix/users', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Client-ID': TWITCH_PUBLIC_CLIENT_ID
+      }
+    })
+
+    if (response.ok) {
+      const payload = (await response.json()) as {
+        data: Array<{ display_name: string; profile_image_url: string }>
+      }
+      const user = payload.data[0]
+      if (user) {
+        return {
+          loggedIn: true,
+          username: user.display_name,
+          avatarUrl: user.profile_image_url,
+          token
+        }
+      }
+    }
+  } catch {
+    // API best-effort; fall through to cookie-only session
+  }
+
+  return { loggedIn: true, username: fallbackUsername, token }
+}
+
+export async function logoutChat(): Promise<void> {
+  await session.fromPartition(CHAT_PROVIDER.partition).clearStorageData()
+}
+
 export function registerSessionHandlers(): void {
   ipcMain.handle('sessions:list', () => detectAllSessions())
   ipcMain.handle('sessions:detect', (_event, id: ProviderId) => detectSession(id))
   ipcMain.handle('sessions:logout', (_event, id: ProviderId) => logoutProvider(id))
+  ipcMain.handle('sessions:chat:detect', () => detectChat())
+  ipcMain.handle('sessions:chat:logout', () => logoutChat())
 }

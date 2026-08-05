@@ -1,8 +1,8 @@
 import { ElectronAPI } from '@electron-toolkit/preload'
-import type { ProviderId, ProviderSession } from '../shared/providers'
-import type { ProfilesStore, StreamConfig, StreamLayout } from '../shared/streams'
+import type { ChatSession, ProviderId, ProviderSession } from '../shared/providers'
+import type { ChatConfig, ProfilesStore, StreamConfig, StreamLayout } from '../shared/streams'
 import type { AppSettings, DisplayInfo } from '../shared/settings'
-import type { ViewsSyncPayload } from '../shared/views'
+import type { ChatMessage, ChatStatus, ViewsSyncPayload } from '../shared/views'
 
 declare global {
   interface Window {
@@ -12,6 +12,21 @@ declare global {
         list: () => Promise<ProviderSession[]>
         detect: (id: ProviderId) => Promise<ProviderSession>
         logout: (id: ProviderId) => Promise<void>
+        detectChat: () => Promise<ChatSession>
+        logoutChat: () => Promise<void>
+      }
+      chats: {
+        add: () => Promise<ChatConfig[]>
+        remove: (id: string) => Promise<ChatConfig[]>
+        updateLayout: (id: string, layout: StreamLayout) => Promise<ChatConfig[]>
+      }
+      chat: {
+        connect: () => Promise<void>
+        disconnect: () => Promise<void>
+        setChannels: (channels: string[]) => Promise<void>
+        send: (channel: string, message: string) => Promise<void>
+        onMessage: (cb: (message: ChatMessage) => void) => () => void
+        onStatus: (cb: (status: ChatStatus) => void) => () => void
       }
       profiles: {
         list: () => Promise<ProfilesStore>

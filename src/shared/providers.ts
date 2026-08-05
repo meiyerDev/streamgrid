@@ -44,3 +44,28 @@ export const PROVIDERS: ProviderDef[] = [
 export function getProvider(id: ProviderId): ProviderDef | undefined {
   return PROVIDERS.find((provider) => provider.id === id)
 }
+
+export type ChatProviderId = 'twitch-chat'
+
+export interface ChatProviderDef {
+  id: ChatProviderId
+  name: string
+  partition: string
+  homeUrl: string
+  loginUrl: string
+}
+
+export const CHAT_PROVIDER: ChatProviderDef = {
+  id: 'twitch-chat',
+  name: 'Chat de Twitch',
+  partition: 'persist:twitch-chat',
+  homeUrl: 'https://www.twitch.tv',
+  loginUrl: 'https://www.twitch.tv/login'
+}
+
+export interface ChatSession {
+  loggedIn: boolean
+  username?: string
+  avatarUrl?: string
+  token?: string
+}

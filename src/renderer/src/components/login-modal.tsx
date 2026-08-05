@@ -1,10 +1,16 @@
 import { useEffect, useRef } from 'react'
 import { X } from 'lucide-react'
-import type { ProviderDef } from '../../../shared/providers'
 import type { WebviewElement } from '../webview'
 
+export interface LoginTarget {
+  name: string
+  partition: string
+  homeUrl: string
+  loginUrl: string
+}
+
 interface LoginModalProps {
-  provider: ProviderDef
+  provider: LoginTarget
   onClose: () => void
   onLoggedIn: () => void
 }

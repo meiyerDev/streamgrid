@@ -8,7 +8,17 @@ import {
   type ReactNode
 } from 'react'
 import { Link } from '@tanstack/react-router'
-import { Check, LayoutGrid, Pencil, RefreshCcw, Save, Settings2, UserRound, X } from 'lucide-react'
+import {
+  Check,
+  LayoutGrid,
+  MessageSquare,
+  Pencil,
+  RefreshCcw,
+  Save,
+  Settings2,
+  UserRound,
+  X
+} from 'lucide-react'
 import ReactGridLayout, { useContainerWidth, type Layout, type LayoutItem } from 'react-grid-layout'
 import 'react-grid-layout/css/styles.css'
 import { getProvider } from '../../../shared/providers'
@@ -21,11 +31,13 @@ import {
   MIN_GRID_COL_WIDTH,
   MIN_STREAM_H,
   MIN_STREAM_W,
+  type ChatConfig,
   type StreamConfig,
   type StreamLayout
 } from '../../../shared/streams'
 import type { ViewBounds, ViewsSyncPayload } from '../../../shared/views'
 import { AddStreamForm } from '../components/add-stream-form'
+import { ChatTile } from '../components/chat-tile'
 import { ProfileSaveDialog } from '../components/profile-save-dialog'
 import { ProfileTabs } from '../components/profile-tabs'
 import { StreamTile } from '../components/stream-tile'
@@ -41,6 +53,7 @@ import {
   DrawerTrigger
 } from '../components/ui/drawer'
 import { useProfiles } from '../hooks/use-profiles'
+import { useChat } from '../hooks/use-chat'
 import { PROVIDER_ICONS } from '../providers'
 
 function StreamRow({
@@ -72,6 +85,26 @@ function StreamRow({
   )
 }
 
+function ChatRow({ onRemove }: { onRemove: () => void }): React.JSX.Element {
+  return (
+    <div className="flex items-center gap-3 rounded-xl bg-surface px-4 py-3">
+      <MessageSquare className="size-5 shrink-0 text-blurple" aria-hidden="true" />
+      <div className="flex min-w-0 flex-1 flex-col text-left">
+        <span className="truncate text-sm font-semibold text-white">Chat general</span>
+        <span className="text-xs text-white/50">Chat unificado</span>
+      </div>
+      <button
+        onClick={onRemove}
+        aria-label="Quitar chat"
+        title="Quitar chat"
+        className="rounded-lg p-1.5 text-white/50 transition-colors hover:bg-white/10 hover:text-white"
+      >
+        <X size={16} aria-hidden="true" />
+      </button>
+    </div>
+  )
+}
+
 function fitRowHeight(rows: number, availableHeight: number): number {
   if (rows <= 0 || availableHeight <= 0) return GRID_ROW_HEIGHT
   const marginY = GRID_MARGIN[1]
@@ -82,7 +115,7 @@ function fitRowHeight(rows: number, availableHeight: number): number {
   return Math.min(rh, GRID_ROW_HEIGHT)
 }
 
-function buildGridLayout(streams: StreamConfig[], cols: number): Layout {
+function buildGridLayout(streams: StreamConfig[], chats: ChatConfig[], cols: number): Layout {
   const layout: LayoutItem[] = []
   const defaultW = Math.max(MIN_STREAM_W, Math.round(cols / 2))
   let bottom = 0
@@ -101,6 +134,19 @@ function buildGridLayout(streams: StreamConfig[], cols: number): Layout {
       bottom += DEFAULT_STREAM_H
     }
   }
+  for (const chat of chats) {
+    if (chat.layout) {
+      layout.push({ i: chat.id, ...chat.layout })
+    } else {
+      layout.push({
+        i: chat.id,
+        x: defaultW,
+        y: 0,
+        w: defaultW,
+        h: DEFAULT_STREAM_H
+      })
+    }
+  }
   for (const item of layout) {
     item.minW = MIN_STREAM_W
     item.minH = MIN_STREAM_H
@@ -115,10 +161,13 @@ interface AdminDrawerProps {
   trigger?: ReactNode
   triggerClassName?: string
   streams: StreamConfig[]
+  chats: ChatConfig[]
   adding: boolean
   onAddingChange: (adding: boolean) => void
   onAdd: (providerId: StreamConfig['providerId'], channel: string) => Promise<void>
   onRemove: (id: string) => void
+  onAddChat: () => void
+  onRemoveChat: (id: string) => void
   profileId: string
   activeProfileName: string
   onRename: (id: string, name: string) => void
@@ -130,10 +179,13 @@ function AdminDrawer({
   trigger,
   triggerClassName,
   streams,
+  chats,
   adding,
   onAddingChange,
   onAdd,
   onRemove,
+  onAddChat,
+  onRemoveChat,
   profileId,
   activeProfileName,
   onRename
@@ -173,6 +225,19 @@ function AdminDrawer({
               <StreamRow key={stream.id} stream={stream} onRemove={() => onRemove(stream.id)} />
             ))
           )}
+
+          <div className="flex flex-col gap-2">
+            <span className="text-xs font-semibold uppercase tracking-wider text-white/40">
+              Chat
+            </span>
+            {chats.length > 0 ? (
+              chats.map((chat) => <ChatRow key={chat.id} onRemove={() => onRemoveChat(chat.id)} />)
+            ) : (
+              <p className="text-xs text-white/50">
+                No hay chat. Añade uno para ver todos los mensajes de tus streams en un solo panel.
+              </p>
+            )}
+          </div>
         </div>
         <DrawerFooter className="px-6 pb-6">
           {!adding && (
@@ -182,6 +247,15 @@ function AdminDrawer({
             >
               <LayoutGrid size={18} aria-hidden="true" />
               Añadir stream
+            </button>
+          )}
+          {chats.length === 0 && (
+            <button
+              onClick={onAddChat}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-surface px-6 py-3 text-sm font-semibold text-white/70 transition hover:bg-surface hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-[0.97]"
+            >
+              <MessageSquare size={18} aria-hidden="true" />
+              Añadir chat
             </button>
           )}
           <button
@@ -218,6 +292,10 @@ export function HomePage(): React.JSX.Element {
     addStream,
     removeStream,
     updateLayout,
+    activeChats: chats,
+    addChat,
+    removeChat,
+    updateChatLayout,
     profiles,
     activeProfileId,
     setActive,
@@ -225,10 +303,11 @@ export function HomePage(): React.JSX.Element {
     removeProfile,
     renameProfile
   } = useProfiles()
+  const { setChannels } = useChat()
   const { containerRef } = useContainerWidth()
   const [mounted, setMounted] = useState(false)
   const [width, setWidth] = useState(0)
-  const hasStreams = streams.length > 0
+  const hasContent = streams.length > 0 || chats.length > 0
   const activeProfile = profiles.find((p) => p.id === activeProfileId) ?? profiles[0]
 
   useEffect(() => {
@@ -246,7 +325,7 @@ export function HomePage(): React.JSX.Element {
       observer.disconnect()
       setMounted(false)
     }
-  }, [containerRef, hasStreams])
+  }, [containerRef, hasContent])
 
   const cols = useMemo(
     () =>
@@ -259,7 +338,7 @@ export function HomePage(): React.JSX.Element {
     [width]
   )
 
-  const gridLayout = useMemo(() => buildGridLayout(streams, cols), [streams, cols])
+  const gridLayout = useMemo(() => buildGridLayout(streams, chats, cols), [streams, chats, cols])
 
   const maxRows = useMemo(
     () => Math.max(0, ...gridLayout.map((item) => item.y + item.h)),
@@ -269,7 +348,6 @@ export function HomePage(): React.JSX.Element {
   const [height, setHeight] = useState(0)
 
   const rowHeight = useMemo(() => fitRowHeight(maxRows, height), [maxRows, height])
-
   const gridStyle = useMemo<CSSProperties>(() => {
     const pitchX =
       (width - (cols - 1) * GRID_MARGIN[0] - GRID_MARGIN[0] * 2) / cols + GRID_MARGIN[0]
@@ -290,7 +368,7 @@ export function HomePage(): React.JSX.Element {
     const observer = new ResizeObserver(update)
     observer.observe(el)
     return () => observer.disconnect()
-  }, [containerRef, mounted, streams.length])
+  }, [containerRef, mounted, hasContent])
 
   const computeBounds = useCallback((): Record<string, ViewBounds> => {
     const container = containerRef.current
@@ -387,19 +465,23 @@ export function HomePage(): React.JSX.Element {
 
   const persistLayout = useCallback(
     async (layout: Layout) => {
+      const streamIds = new Set(streams.map((stream) => stream.id))
       await Promise.all(
-        layout.map((item) =>
-          updateLayout(item.i, {
+        layout.map((item) => {
+          const entry = {
             x: item.x,
             y: item.y,
             w: item.w,
             h: item.h,
             customized: true
-          } satisfies StreamLayout)
-        )
+          } satisfies StreamLayout
+          return streamIds.has(item.i)
+            ? updateLayout(item.i, entry)
+            : updateChatLayout(item.i, entry)
+        })
       )
     },
-    [updateLayout]
+    [streams, updateLayout, updateChatLayout]
   )
 
   const persistTimer = useRef<number | null>(null)
@@ -462,14 +544,21 @@ export function HomePage(): React.JSX.Element {
     open: drawerOpen,
     onOpenChange: setDrawerOpen,
     streams,
+    chats,
     adding: addingStream,
     onAddingChange: setAddingStream,
     onAdd: addStream,
     onRemove: (id: string) => void removeStream(id),
+    onAddChat: () => void addChat(),
+    onRemoveChat: (id: string) => void removeChat(id),
     profileId: activeProfileId,
     activeProfileName: activeProfile?.name ?? '',
     onRename: (id: string, name: string) => void renameProfile(id, name)
   }
+
+  useEffect(() => {
+    void setChannels(streams.map((stream) => stream.channel))
+  }, [streams, setChannels])
 
   return (
     <div className="flex h-screen w-screen flex-col overflow-hidden bg-canvas text-white">
@@ -487,7 +576,7 @@ export function HomePage(): React.JSX.Element {
           />
         </div>
         <nav className="ml-auto flex items-center gap-2">
-          {streams.length > 0 && (
+          {hasContent && (
             <button
               onClick={pushSync}
               aria-label={'Refrescar mosaico'}
@@ -497,7 +586,7 @@ export function HomePage(): React.JSX.Element {
               <RefreshCcw size={20} aria-hidden="true" />
             </button>
           )}
-          {streams.length > 0 && (
+          {hasContent && (
             <button
               onClick={() => setEdit((value) => !value)}
               aria-label={edit ? 'Terminar edición' : 'Editar mosaico'}
@@ -533,7 +622,7 @@ export function HomePage(): React.JSX.Element {
         </nav>
       </header>
 
-      {streams.length === 0 ? (
+      {!hasContent ? (
         <main className="flex min-h-0 w-full flex-1 flex-col items-center justify-center gap-10 text-center">
           <h1 className="text-5xl font-extrabold uppercase tracking-tight text-white">
             streamgrid
@@ -569,6 +658,14 @@ export function HomePage(): React.JSX.Element {
                   stream={stream}
                   edit={edit}
                   onRemove={() => void removeStream(stream.id)}
+                />
+              ))}
+              {chats.map((chat) => (
+                <ChatTile
+                  key={chat.id}
+                  chat={chat}
+                  edit={edit}
+                  onRemove={() => void removeChat(chat.id)}
                 />
               ))}
             </ReactGridLayout>

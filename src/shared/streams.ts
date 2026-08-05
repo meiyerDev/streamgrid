@@ -15,10 +15,16 @@ export interface StreamConfig {
   layout?: StreamLayout
 }
 
+export interface ChatConfig {
+  id: string
+  layout?: StreamLayout
+}
+
 export interface StreamProfile {
   id: string
   name: string
   streams: StreamConfig[]
+  chats: ChatConfig[]
 }
 
 export interface ProfilesStore {
@@ -44,4 +50,8 @@ export function defaultStreamLayout(streams: StreamConfig[]): StreamLayout {
     0
   )
   return { x: 0, y: maxBottom, w: DEFAULT_STREAM_W, h: DEFAULT_STREAM_H }
+}
+
+export function defaultChatLayout(): StreamLayout {
+  return { x: 6, y: 0, w: DEFAULT_STREAM_W, h: DEFAULT_STREAM_H }
 }

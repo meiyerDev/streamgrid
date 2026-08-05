@@ -4,7 +4,9 @@ import { join } from 'path'
 import { randomUUID } from 'crypto'
 import { getProvider, type ProviderId } from '../shared/providers'
 import {
+  defaultChatLayout,
   defaultStreamLayout,
+  type ChatConfig,
   type ProfilesStore,
   type StreamConfig,
   type StreamLayout,
@@ -29,7 +31,16 @@ function loadProfiles(): ProfilesStore {
       Array.isArray((parsed as ProfilesStore).profiles) &&
       typeof (parsed as ProfilesStore).activeProfileId === 'string'
     ) {
-      return parsed as ProfilesStore
+      const store = parsed as ProfilesStore
+      let changed = false
+      const normalized = store.profiles.map((profile) => {
+        const streams = Array.isArray(profile.streams) ? profile.streams : []
+        const chats = Array.isArray(profile.chats) ? profile.chats : []
+        if (streams !== profile.streams || chats !== profile.chats) changed = true
+        return { ...profile, streams, chats }
+      })
+      if (changed) saveProfiles({ ...store, profiles: normalized })
+      return { ...store, profiles: normalized }
     }
   } catch {
     // fall through to migration / default
@@ -50,7 +61,8 @@ function migrate(): ProfilesStore {
           legacy.profiles.push({
             id: randomUUID(),
             name: 'Default',
-            streams: migrated
+            streams: migrated,
+            chats: []
           })
         }
       }
@@ -75,7 +87,8 @@ export function createProfile(name: string): ProfilesStore {
   const profile: StreamProfile = {
     id: randomUUID(),
     name: name.trim() || 'Nuevo perfil',
-    streams: []
+    streams: [],
+    chats: []
   }
   store.profiles.push(profile)
   store.activeProfileId = profile.id
@@ -117,7 +130,7 @@ function activeProfile(store: ProfilesStore): StreamProfile {
   const active =
     store.profiles.find((p) => p.id === store.activeProfileId) ?? store.profiles[0] ?? null
   if (!active) {
-    return { id: '', name: '', streams: [] }
+    return { id: '', name: '', streams: [], chats: [] }
   }
   return active
 }
@@ -138,7 +151,8 @@ function ensureActiveProfile(): StreamProfile {
   const profile: StreamProfile = {
     id: randomUUID(),
     name: 'Default',
-    streams: []
+    streams: [],
+    chats: []
   }
   store.profiles.push(profile)
   store.activeProfileId = profile.id
@@ -191,6 +205,39 @@ export function removeStream(id: string): StreamConfig[] {
   return result
 }
 
+export function addChat(): ChatConfig[] {
+  let result: ChatConfig[] = []
+  updateActiveProfile((profile) => {
+    const nextChats = [...profile.chats]
+    if (nextChats.length === 0) {
+      nextChats.push({ id: randomUUID(), layout: defaultChatLayout() })
+    }
+    result = nextChats
+    return { ...profile, chats: nextChats }
+  })
+  return result
+}
+
+export function removeChat(id: string): ChatConfig[] {
+  let result: ChatConfig[] = []
+  updateActiveProfile((profile) => {
+    const nextChats = profile.chats.filter((chat) => chat.id !== id)
+    result = nextChats
+    return { ...profile, chats: nextChats }
+  })
+  return result
+}
+
+export function updateChatLayout(id: string, layout: StreamLayout): ChatConfig[] {
+  let result: ChatConfig[] = []
+  updateActiveProfile((profile) => {
+    const nextChats = profile.chats.map((chat) => (chat.id === id ? { ...chat, layout } : chat))
+    result = nextChats
+    return { ...profile, chats: nextChats }
+  })
+  return result
+}
+
 export function registerProfileHandlers(): void {
   ipcMain.handle('profiles:list', () => listProfiles())
   ipcMain.handle('profiles:create', (_event, name: string) => createProfile(name))
@@ -203,5 +250,10 @@ export function registerProfileHandlers(): void {
   ipcMain.handle('streams:remove', (_event, id: string) => removeStream(id))
   ipcMain.handle('streams:updateLayout', (_event, id: string, layout: StreamLayout) =>
     updateStreamLayout(id, layout)
+  )
+  ipcMain.handle('chats:add', () => addChat())
+  ipcMain.handle('chats:remove', (_event, id: string) => removeChat(id))
+  ipcMain.handle('chats:updateLayout', (_event, id: string, layout: StreamLayout) =>
+    updateChatLayout(id, layout)
   )
 }

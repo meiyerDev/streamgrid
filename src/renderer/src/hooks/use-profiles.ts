@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { ProviderId } from '../../../shared/providers'
-import type { ProfilesStore, StreamConfig, StreamLayout } from '../../../shared/streams'
+import type { ChatConfig, ProfilesStore, StreamConfig, StreamLayout } from '../../../shared/streams'
 
 export interface UseProfiles {
   profiles: ProfilesStore['profiles']
   activeProfileId: string
   activeStreams: StreamConfig[]
+  activeChats: ChatConfig[]
   loading: boolean
   createProfile: (name: string) => Promise<void>
   renameProfile: (id: string, name: string) => Promise<void>
@@ -14,6 +15,9 @@ export interface UseProfiles {
   addStream: (providerId: ProviderId, channel: string) => Promise<void>
   removeStream: (id: string) => Promise<void>
   updateLayout: (id: string, layout: StreamLayout) => Promise<void>
+  addChat: () => Promise<void>
+  removeChat: (id: string) => Promise<void>
+  updateChatLayout: (id: string, layout: StreamLayout) => Promise<void>
 }
 
 export function useProfiles(): UseProfiles {
@@ -34,7 +38,8 @@ export function useProfiles(): UseProfiles {
 
   const activeProfileId = store.activeProfileId
   const active = store.profiles.find((p) => p.id === activeProfileId) ?? store.profiles[0]
-  const activeStreams = active ? active.streams : []
+  const activeStreams = active && Array.isArray(active.streams) ? active.streams : []
+  const activeChats = active && Array.isArray(active.chats) ? active.chats : []
 
   const createProfile = useCallback(async (name: string) => {
     setStore(await window.api.profiles.create(name))
@@ -80,10 +85,36 @@ export function useProfiles(): UseProfiles {
     [setStreams]
   )
 
+  const setChats = useCallback((chats: ChatConfig[]) => {
+    setStore((prev) => ({
+      ...prev,
+      profiles: prev.profiles.map((p) => (p.id === prev.activeProfileId ? { ...p, chats } : p))
+    }))
+  }, [])
+
+  const addChat = useCallback(async () => {
+    setChats(await window.api.chats.add())
+  }, [setChats])
+
+  const removeChat = useCallback(
+    async (id: string) => {
+      setChats(await window.api.chats.remove(id))
+    },
+    [setChats]
+  )
+
+  const updateChatLayout = useCallback(
+    async (id: string, layout: StreamLayout) => {
+      setChats(await window.api.chats.updateLayout(id, layout))
+    },
+    [setChats]
+  )
+
   return {
     profiles: store.profiles,
     activeProfileId,
     activeStreams,
+    activeChats,
     loading,
     createProfile,
     renameProfile,
@@ -91,6 +122,9 @@ export function useProfiles(): UseProfiles {
     setActive,
     addStream,
     removeStream,
-    updateLayout
+    updateLayout,
+    addChat,
+    removeChat,
+    updateChatLayout
   }
 }

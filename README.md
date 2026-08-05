@@ -115,17 +115,17 @@ src/
 
 ## Scripts / Commands
 
-| Command | Description |
-| --- | --- |
-| `pnpm dev` | Start Electron with hot module reload (dev + HMR) |
-| `pnpm lint` | ESLint (cached) |
-| `pnpm format` | Prettier (write) |
-| `pnpm typecheck` | TypeScript check for **both** node + web configs |
-| `pnpm build` | Typecheck then electron-vite build (outputs to `out/`) |
-| `pnpm build:unpack` | Build + unpacked dir (`electron-builder --dir`) |
-| `pnpm build:win` | Build + Windows installer |
-| `pnpm build:mac` | Build + macOS package |
-| `pnpm build:linux` | Build + Linux package (AppImage / deb) |
+| Command             | Description                                            |
+| ------------------- | ------------------------------------------------------ |
+| `pnpm dev`          | Start Electron with hot module reload (dev + HMR)      |
+| `pnpm lint`         | ESLint (cached)                                        |
+| `pnpm format`       | Prettier (write)                                       |
+| `pnpm typecheck`    | TypeScript check for **both** node + web configs       |
+| `pnpm build`        | Typecheck then electron-vite build (outputs to `out/`) |
+| `pnpm build:unpack` | Build + unpacked dir (`electron-builder --dir`)        |
+| `pnpm build:win`    | Build + Windows installer                              |
+| `pnpm build:mac`    | Build + macOS package                                  |
+| `pnpm build:linux`  | Build + Linux package (AppImage / deb)                 |
 
 ---
 
