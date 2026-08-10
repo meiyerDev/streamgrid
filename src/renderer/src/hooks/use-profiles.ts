@@ -7,6 +7,8 @@ export interface UseProfiles {
   activeProfileId: string
   activeStreams: StreamConfig[]
   loading: boolean
+  chatEnabled: boolean
+  chatLayout: StreamLayout | undefined
   createProfile: (name: string) => Promise<void>
   renameProfile: (id: string, name: string) => Promise<void>
   removeProfile: (id: string) => Promise<void>
@@ -14,6 +16,8 @@ export interface UseProfiles {
   addStream: (providerId: ProviderId, channel: string) => Promise<void>
   removeStream: (id: string) => Promise<void>
   updateLayout: (id: string, layout: StreamLayout) => Promise<void>
+  setChatEnabled: (enabled: boolean) => Promise<void>
+  updateChatLayout: (layout: StreamLayout) => Promise<void>
 }
 
 export function useProfiles(): UseProfiles {
@@ -35,6 +39,8 @@ export function useProfiles(): UseProfiles {
   const activeProfileId = store.activeProfileId
   const active = store.profiles.find((p) => p.id === activeProfileId) ?? store.profiles[0]
   const activeStreams = active ? active.streams : []
+  const chatEnabled = active?.chat?.enabled ?? false
+  const chatLayout = active?.chat?.layout
 
   const createProfile = useCallback(async (name: string) => {
     setStore(await window.api.profiles.create(name))
@@ -80,17 +86,29 @@ export function useProfiles(): UseProfiles {
     [setStreams]
   )
 
+  const setChatEnabled = useCallback(async (enabled: boolean) => {
+    setStore(await window.api.profiles.updateChat({ enabled }))
+  }, [])
+
+  const updateChatLayout = useCallback(async (layout: StreamLayout) => {
+    setStore(await window.api.profiles.updateChat({ layout }))
+  }, [])
+
   return {
     profiles: store.profiles,
     activeProfileId,
     activeStreams,
     loading,
+    chatEnabled,
+    chatLayout,
     createProfile,
     renameProfile,
     removeProfile,
     setActive,
     addStream,
     removeStream,
-    updateLayout
+    updateLayout,
+    setChatEnabled,
+    updateChatLayout
   }
 }

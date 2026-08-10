@@ -6,6 +6,7 @@ import { registerSessionHandlers } from './sessions'
 import { registerProfileHandlers } from './profiles'
 import { registerSettingsHandlers, applySettings, getSettings } from './settings'
 import { attachViewManager, registerViewHandlers, applyMasterVolume } from './stream-views'
+import { attachChatManager, registerChatHandlers } from './chat'
 
 function createWindow(): BrowserWindow {
   // Create the browser window.
@@ -23,6 +24,7 @@ function createWindow(): BrowserWindow {
   })
 
   attachViewManager(mainWindow)
+  attachChatManager(mainWindow)
 
   mainWindow.on('resize', () => {
     mainWindow?.webContents.send('window:resized')
@@ -76,6 +78,7 @@ app.whenReady().then(() => {
   registerSessionHandlers()
   registerProfileHandlers()
   registerViewHandlers()
+  registerChatHandlers()
 
   let lastSettings = getSettings()
   registerSettingsHandlers((settings) => {

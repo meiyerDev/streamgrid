@@ -13,7 +13,10 @@ import ReactGridLayout, { useContainerWidth, type Layout, type LayoutItem } from
 import 'react-grid-layout/css/styles.css'
 import { getProvider } from '../../../shared/providers'
 import {
+  CHAT_ID,
+  CHAT_MIN_W,
   DEFAULT_STREAM_H,
+  defaultChatLayout,
   GRID_COLS,
   GRID_MARGIN,
   GRID_ROW_HEIGHT,
@@ -26,6 +29,7 @@ import {
 } from '../../../shared/streams'
 import type { ViewBounds, ViewsSyncPayload } from '../../../shared/views'
 import { AddStreamForm } from '../components/add-stream-form'
+import { ChatTile } from '../components/chat-tile'
 import { ProfileSaveDialog } from '../components/profile-save-dialog'
 import { ProfileTabs } from '../components/profile-tabs'
 import { StreamTile } from '../components/stream-tile'
@@ -40,6 +44,7 @@ import {
   DrawerTitle,
   DrawerTrigger
 } from '../components/ui/drawer'
+import { Switch } from '../components/ui/switch'
 import { useProfiles } from '../hooks/use-profiles'
 import { PROVIDER_ICONS } from '../providers'
 
@@ -82,7 +87,11 @@ function fitRowHeight(rows: number, availableHeight: number): number {
   return Math.min(rh, GRID_ROW_HEIGHT)
 }
 
-function buildGridLayout(streams: StreamConfig[], cols: number): Layout {
+function buildGridLayout(
+  streams: StreamConfig[],
+  cols: number,
+  chat?: { enabled: boolean; layout?: StreamLayout }
+): Layout {
   const layout: LayoutItem[] = []
   const defaultW = Math.max(MIN_STREAM_W, Math.round(cols / 2))
   let bottom = 0
@@ -106,6 +115,19 @@ function buildGridLayout(streams: StreamConfig[], cols: number): Layout {
     item.minH = MIN_STREAM_H
     item.maxW = cols
   }
+  if (chat?.enabled) {
+    const chatLayout = chat.layout ?? defaultChatLayout(streams)
+    layout.push({
+      i: CHAT_ID,
+      x: chatLayout.x,
+      y: chatLayout.y,
+      w: chatLayout.w,
+      h: chatLayout.h,
+      minW: CHAT_MIN_W,
+      minH: MIN_STREAM_H,
+      maxW: cols
+    })
+  }
   return layout
 }
 
@@ -122,6 +144,8 @@ interface AdminDrawerProps {
   profileId: string
   activeProfileName: string
   onRename: (id: string, name: string) => void
+  chatEnabled: boolean
+  onChatEnabledChange: (enabled: boolean) => void
 }
 
 function AdminDrawer({
@@ -136,7 +160,9 @@ function AdminDrawer({
   onRemove,
   profileId,
   activeProfileName,
-  onRename
+  onRename,
+  chatEnabled,
+  onChatEnabledChange
 }: AdminDrawerProps): React.JSX.Element {
   const [saveOpen, setSaveOpen] = useState(false)
 
@@ -151,6 +177,19 @@ function AdminDrawer({
           </DrawerDescription>
         </DrawerHeader>
         <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-6 py-6">
+          <label className="flex cursor-pointer items-center gap-4 rounded-xl bg-surface px-4 py-3">
+            <span className="flex min-w-0 flex-col text-left">
+              <span className="text-sm font-semibold text-white">Chat del mosaico</span>
+              <span className="text-xs text-white/50">
+                Observa el chat de todos los streams activos (solo lectura).
+              </span>
+            </span>
+            <Switch
+              className="ml-auto shrink-0"
+              checked={chatEnabled}
+              onCheckedChange={(value) => onChatEnabledChange(value)}
+            />
+          </label>
           {adding ? (
             <AddStreamForm
               onAdd={async (providerId, channel) => {
@@ -223,7 +262,11 @@ export function HomePage(): React.JSX.Element {
     setActive,
     createProfile,
     removeProfile,
-    renameProfile
+    renameProfile,
+    chatEnabled,
+    chatLayout,
+    setChatEnabled,
+    updateChatLayout
   } = useProfiles()
   const { containerRef } = useContainerWidth()
   const [mounted, setMounted] = useState(false)
@@ -259,7 +302,15 @@ export function HomePage(): React.JSX.Element {
     [width]
   )
 
-  const gridLayout = useMemo(() => buildGridLayout(streams, cols), [streams, cols])
+  const gridLayout = useMemo(
+    () =>
+      buildGridLayout(
+        streams,
+        cols,
+        chatEnabled ? { enabled: true, layout: chatLayout } : undefined
+      ),
+    [streams, cols, chatEnabled, chatLayout]
+  )
 
   const maxRows = useMemo(
     () => Math.max(0, ...gridLayout.map((item) => item.y + item.h)),
@@ -385,21 +436,37 @@ export function HomePage(): React.JSX.Element {
     return unsubscribe
   }, [mounted, streams.length, pushSync])
 
+  useEffect(() => {
+    void window.api.chat.setChannels(
+      chatEnabled && hasStreams
+        ? streams.map((stream) => ({ providerId: stream.providerId, channel: stream.channel }))
+        : []
+    )
+  }, [chatEnabled, hasStreams, streams])
+
   const persistLayout = useCallback(
     async (layout: Layout) => {
       await Promise.all(
         layout.map((item) =>
-          updateLayout(item.i, {
-            x: item.x,
-            y: item.y,
-            w: item.w,
-            h: item.h,
-            customized: true
-          } satisfies StreamLayout)
+          item.i === CHAT_ID
+            ? updateChatLayout({
+                x: item.x,
+                y: item.y,
+                w: item.w,
+                h: item.h,
+                customized: true
+              } satisfies StreamLayout)
+            : updateLayout(item.i, {
+                x: item.x,
+                y: item.y,
+                w: item.w,
+                h: item.h,
+                customized: true
+              } satisfies StreamLayout)
         )
       )
     },
-    [updateLayout]
+    [updateLayout, updateChatLayout]
   )
 
   const persistTimer = useRef<number | null>(null)
@@ -420,6 +487,7 @@ export function HomePage(): React.JSX.Element {
       flushPersist()
       if (syncTimer.current !== null) window.clearTimeout(syncTimer.current)
       void window.api.views.sync({ streams: [], bounds: {}, edit: false })
+      void window.api.chat.setChannels([])
     }
   }, [flushPersist])
 
@@ -468,7 +536,9 @@ export function HomePage(): React.JSX.Element {
     onRemove: (id: string) => void removeStream(id),
     profileId: activeProfileId,
     activeProfileName: activeProfile?.name ?? '',
-    onRename: (id: string, name: string) => void renameProfile(id, name)
+    onRename: (id: string, name: string) => void renameProfile(id, name),
+    chatEnabled,
+    onChatEnabledChange: (enabled: boolean) => void setChatEnabled(enabled)
   }
 
   return (
@@ -571,6 +641,14 @@ export function HomePage(): React.JSX.Element {
                   onRemove={() => void removeStream(stream.id)}
                 />
               ))}
+              {chatEnabled && hasStreams && (
+                <ChatTile
+                  key={CHAT_ID}
+                  edit={edit}
+                  profileId={activeProfileId}
+                  onHide={() => void setChatEnabled(false)}
+                />
+              )}
             </ReactGridLayout>
           )}
           <AdminDrawer {...drawerProps} />

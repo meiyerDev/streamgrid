@@ -15,10 +15,16 @@ export interface StreamConfig {
   layout?: StreamLayout
 }
 
+export interface ChatSettings {
+  enabled: boolean
+  layout?: StreamLayout
+}
+
 export interface StreamProfile {
   id: string
   name: string
   streams: StreamConfig[]
+  chat?: ChatSettings
 }
 
 export interface ProfilesStore {
@@ -38,10 +44,23 @@ export const DEFAULT_STREAM_H = 10
 export const MIN_STREAM_W = 3
 export const MIN_STREAM_H = 3
 
+export const CHAT_ID = '__chat__'
+export const CHAT_MIN_W = 2
+export const CHAT_DEFAULT_W = 4
+export const CHAT_DEFAULT_H = DEFAULT_STREAM_H
+
 export function defaultStreamLayout(streams: StreamConfig[]): StreamLayout {
   const maxBottom = streams.reduce(
     (max, stream) => Math.max(max, (stream.layout?.y ?? 0) + (stream.layout?.h ?? 0)),
     0
   )
   return { x: 0, y: maxBottom, w: DEFAULT_STREAM_W, h: DEFAULT_STREAM_H }
+}
+
+export function defaultChatLayout(streams: StreamConfig[]): StreamLayout {
+  const maxBottom = streams.reduce(
+    (max, stream) => Math.max(max, (stream.layout?.y ?? 0) + (stream.layout?.h ?? 0)),
+    0
+  )
+  return { x: 0, y: maxBottom, w: CHAT_DEFAULT_W, h: CHAT_DEFAULT_H }
 }
