@@ -7,6 +7,12 @@ export interface ProviderColors {
   onCta: string
 }
 
+export interface ProviderIrcDef {
+  host: string
+  port: number
+  tls?: boolean
+}
+
 export interface ProviderDef {
   id: ProviderId
   name: string
@@ -15,6 +21,7 @@ export interface ProviderDef {
   homeUrl: string
   loginUrl: string
   colors: ProviderColors
+  irc?: ProviderIrcDef
 }
 
 export interface ProviderSession {
@@ -37,6 +44,11 @@ export const PROVIDERS: ProviderDef[] = [
       onAccent: '#ffffff',
       cta: '#ffffff',
       onCta: '#0a0d3a'
+    },
+    irc: {
+      host: 'irc.chat.twitch.tv',
+      port: 6697,
+      tls: true
     }
   }
 ]

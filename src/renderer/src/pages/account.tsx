@@ -3,6 +3,7 @@ import { ArrowLeft } from 'lucide-react'
 import { PROVIDERS, getProvider } from '../../../shared/providers'
 import { ProviderCard } from '../components/provider-card'
 import { LoginModal } from '../components/login-modal'
+import { ChatAuthCard } from '../components/chat-auth-card'
 import { useProviderSessions } from '../hooks/use-provider-sessions'
 
 export function AccountPage(): React.JSX.Element {
@@ -34,6 +35,7 @@ export function AccountPage(): React.JSX.Element {
           />
         ))}
       </div>
+      <ChatAuthCard />
       {activeLogin && activeProvider && (
         <LoginModal
           provider={activeProvider}

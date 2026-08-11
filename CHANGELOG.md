@@ -21,6 +21,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+## [1.1.0] - 2026-08-11
+
+### Added
+
+- **Live chat in the mosaic**
+  - Optional chat tile inside the stream grid (toggle per profile), draggable and resizable with its layout persisted to disk.
+  - Live IRC feed (Twitch) showing messages from all active streams in a single unified view.
+  - Anonymous viewer mode: chat is readable without signing in.
+  - Chat connection status with automatic reconnection and exponential backoff.
+- **Twitch Chat account**
+  - Dedicated "Twitch Chat" connect card on the Accounts page.
+  - In-app Twitch OAuth login via a local HTTPS callback server with a pinned self-signed certificate.
+  - Access token stored encrypted at rest using Electron's safeStorage.
+  - Token scope validation and automatic expiry detection; log out of the chat connection.
+- **Sending messages**
+  - Write box with a channel picker (targets the active streams) and Enter-to-send.
+  - Requires a connected Twitch Chat account; validated input (empty / over 500 characters).
+  - Your own sent messages appear in the feed with other users' messages.
+
+### Changed
+
+### Fixed
+
+### Removed
+
 ## [1.0.1] - 2026-08-03
 
 ### Added
@@ -85,6 +110,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-[Unreleased]: https://github.com/meiyerDev/streamgrid/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/meiyerDev/streamgrid/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/meiyerDev/streamgrid/releases/tag/v1.1.0
 [1.0.1]: https://github.com/meiyerDev/streamgrid/releases/tag/v1.0.1
 [1.0.0]: https://github.com/meiyerDev/streamgrid/releases/tag/v1.0.0

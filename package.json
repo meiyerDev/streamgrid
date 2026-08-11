@@ -1,6 +1,6 @@
 {
   "name": "stream-grid",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "license": "SEE LICENSE IN LICENSE",
   "description": "StreamGrid — gestor de mosaicos de streams en vivo",
   "main": "./out/main/index.js",
@@ -28,8 +28,10 @@
     "@tanstack/history": "^1.162.0",
     "@tanstack/react-router": "^1.170.18",
     "clsx": "^2.1.1",
+    "irc-framework": "^4.14.0",
     "lucide-react": "^1.28.0",
     "react-grid-layout": "^2.2.4",
+    "selfsigned": "^5.5.0",
     "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {

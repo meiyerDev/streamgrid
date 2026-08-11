@@ -5,6 +5,7 @@ import { randomUUID } from 'crypto'
 import { getProvider, type ProviderId } from '../shared/providers'
 import {
   defaultStreamLayout,
+  type ChatSettings,
   type ProfilesStore,
   type StreamConfig,
   type StreamLayout,
@@ -191,6 +192,21 @@ export function removeStream(id: string): StreamConfig[] {
   return result
 }
 
+export function updateChat(patch: Partial<ChatSettings>): ProfilesStore {
+  const store = loadProfiles()
+  const active = activeProfile(store)
+  if (!active.id) return store
+
+  const current = active.chat ?? { enabled: false }
+  const nextChat: ChatSettings = {
+    enabled: patch.enabled ?? current.enabled,
+    layout: patch.layout ?? current.layout
+  }
+  store.profiles = store.profiles.map((p) => (p.id === active.id ? { ...p, chat: nextChat } : p))
+  saveProfiles(store)
+  return store
+}
+
 export function registerProfileHandlers(): void {
   ipcMain.handle('profiles:list', () => listProfiles())
   ipcMain.handle('profiles:create', (_event, name: string) => createProfile(name))
@@ -204,4 +220,5 @@ export function registerProfileHandlers(): void {
   ipcMain.handle('streams:updateLayout', (_event, id: string, layout: StreamLayout) =>
     updateStreamLayout(id, layout)
   )
+  ipcMain.handle('profiles:updateChat', (_event, patch: Partial<ChatSettings>) => updateChat(patch))
 }
