@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useMemo, useRef, useState, type HTMLAttributes } from 'react'
-import { GripVertical, MessagesSquare, Send, X } from 'lucide-react'
+import { ChevronDown, Filter, GripVertical, MessagesSquare, Send, X } from 'lucide-react'
 import {
   CHAT_MESSAGE_CAP,
   CHAT_MSG_MAX_LENGTH,
@@ -10,6 +10,13 @@ import type { TwitchChatStatus } from '../../../shared/chat-auth'
 import type { StreamConfig } from '../../../shared/streams'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 import { Textarea } from './ui/textarea'
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from './ui/dropdown'
 
 interface ChatTileProps extends HTMLAttributes<HTMLDivElement> {
   edit: boolean
@@ -60,11 +67,17 @@ export const ChatTile = forwardRef<HTMLDivElement, ChatTileProps>(function ChatT
   const [status, setStatus] = useState<ChatStatus>('idle')
   const [authStatus, setAuthStatus] = useState<TwitchChatStatus>({ authenticated: false })
   const [channel, setChannel] = useState(streams[0]?.channel ?? '')
+  const [filterChannels, setFilterChannels] = useState<Set<string>>(
+    () => new Set(streams.map((stream) => stream.channel))
+  )
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | undefined>()
   const scrollerRef = useRef<HTMLDivElement>(null)
   const stickToBottom = useRef(true)
+  const [showScrollDown, setShowScrollDown] = useState(false)
+  const streamsRef = useRef(streams)
+  streamsRef.current = streams
 
   useEffect(() => {
     const unsubscribe = window.api.chat.onMessage((message) => {
@@ -83,6 +96,7 @@ export const ChatTile = forwardRef<HTMLDivElement, ChatTileProps>(function ChatT
     setStatus('idle')
     setDraft('')
     setError(undefined)
+    setFilterChannels(new Set(streamsRef.current.map((stream) => stream.channel)))
   }, [profileId])
 
   useEffect(() => {
@@ -103,14 +117,44 @@ export const ChatTile = forwardRef<HTMLDivElement, ChatTileProps>(function ChatT
   }, [streams, channel])
 
   useEffect(() => {
+    const channels = new Set(streams.map((stream) => stream.channel))
+    setFilterChannels((prev) => {
+      if (channels.size === 0) return new Set()
+      const next = new Set([...prev].filter((c) => channels.has(c)))
+      for (const c of channels) next.add(c)
+      return next
+    })
+  }, [streams])
+
+  const allSelected =
+    streams.length > 0 && streams.every((stream) => filterChannels.has(stream.channel))
+  const filterKey = allSelected ? 'all' : [...filterChannels].sort().join(',')
+
+  const visibleMessages = useMemo(
+    () =>
+      allSelected ? messages : messages.filter((message) => filterChannels.has(message.channel)),
+    [messages, allSelected, filterChannels]
+  )
+
+  useEffect(() => {
     const el = scrollerRef.current
     if (el && stickToBottom.current) el.scrollTop = el.scrollHeight
-  }, [messages, status])
+  }, [visibleMessages, status, filterKey])
 
   function handleScroll(): void {
     const el = scrollerRef.current
     if (!el) return
-    stickToBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 40
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40
+    stickToBottom.current = nearBottom
+    setShowScrollDown(!nearBottom)
+  }
+
+  function scrollToBottom(): void {
+    const el = scrollerRef.current
+    if (!el) return
+    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
+    stickToBottom.current = true
+    setShowScrollDown(false)
   }
 
   const channelItems = useMemo(
@@ -172,39 +216,100 @@ export const ChatTile = forwardRef<HTMLDivElement, ChatTileProps>(function ChatT
               <span className="text-xs font-semibold uppercase tracking-tight text-white/80">
                 Chat general
               </span>
-              <span className="ml-auto text-xs text-white/40">{STATUS_LABELS[status]}</span>
-            </div>
-            <div
-              ref={scrollerRef}
-              onScroll={handleScroll}
-              className="min-h-0 flex-1 overflow-y-auto"
-            >
-              {messages.length === 0 ? (
-                <div className="flex h-full items-center justify-center px-4 text-center">
-                  <span className="text-sm text-white/40">
-                    Esperando mensajes de los streams activos…
-                  </span>
-                </div>
-              ) : (
-                <div className="flex flex-col gap-1 px-3 py-2">
-                  {messages.map((message, index) => (
-                    <p
-                      key={`${message.timestamp}-${message.username}-${message.message}-${index}`}
-                      className="break-words text-sm leading-snug"
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  aria-label="Filtrar canales"
+                  title="Filtrar canales"
+                  className="ml-auto h-6 shrink-0 rounded-md px-2 text-xs font-medium"
+                >
+                  <Filter size={12} aria-hidden="true" />
+                  {allSelected
+                    ? 'Todos'
+                    : filterChannels.size === 1
+                      ? '1 canal'
+                      : `${filterChannels.size} canales`}
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="min-w-40">
+                  <DropdownMenuCheckboxItem
+                    checked={allSelected}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setFilterChannels(new Set(streams.map((stream) => stream.channel)))
+                      } else {
+                        setFilterChannels(new Set())
+                      }
+                    }}
+                  >
+                    Todos
+                  </DropdownMenuCheckboxItem>
+                  <DropdownMenuSeparator />
+                  {streams.map((stream) => (
+                    <DropdownMenuCheckboxItem
+                      key={stream.channel}
+                      checked={filterChannels.has(stream.channel)}
+                      onCheckedChange={(checked) => {
+                        setFilterChannels((prev) => {
+                          const next = new Set(prev)
+                          if (checked) {
+                            next.add(stream.channel)
+                          } else {
+                            next.delete(stream.channel)
+                          }
+                          return next
+                        })
+                      }}
                     >
-                      <span className="text-white/60">{`[${message.channel}]`}</span>
-                      <span
-                        className="font-semibold"
-                        style={{ color: userColor(message.username) }}
-                      >
-                        {message.username}
-                      </span>
-                      <span className="text-white/40">{` (${formatHour(message.timestamp)}): `}</span>
-                      <span className="text-white/90">{message.message}</span>
-                    </p>
+                      <span className="truncate">{stream.channel}</span>
+                    </DropdownMenuCheckboxItem>
                   ))}
-                </div>
-              )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <span className="text-xs text-white/40">{STATUS_LABELS[status]}</span>
+            </div>
+            <div className="relative min-h-0 flex-1">
+              <div ref={scrollerRef} onScroll={handleScroll} className="h-full overflow-y-auto">
+                {visibleMessages.length === 0 ? (
+                  <div className="flex h-full items-center justify-center px-4 text-center">
+                    <span className="text-sm text-white/40">
+                      {filterChannels.size === 0
+                        ? 'Ningún canal seleccionado'
+                        : 'Esperando mensajes de los streams activos…'}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-1 px-3 py-2">
+                    {visibleMessages.map((message, index) => (
+                      <p
+                        key={`${message.timestamp}-${message.username}-${message.message}-${index}`}
+                        className="break-words text-sm leading-snug"
+                      >
+                        <span className="text-white/60">{`[${message.channel}]`}</span>
+                        <span
+                          className="font-semibold"
+                          style={{ color: userColor(message.username) }}
+                        >
+                          {message.username}
+                        </span>
+                        <span className="text-white/40">{` (${formatHour(message.timestamp)}): `}</span>
+                        <span className="text-white/90">{message.message}</span>
+                      </p>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={scrollToBottom}
+                aria-label="Ir a los mensajes recientes"
+                title="Ir a los mensajes recientes"
+                className={`absolute bottom-3 right-3 flex size-9 items-center justify-center rounded-full border border-white/10 bg-blurple text-white shadow-lg transition hover:bg-blurple/90 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-[0.95] ${
+                  showScrollDown && visibleMessages.length > 0
+                    ? 'translate-y-0 opacity-100'
+                    : 'pointer-events-none translate-y-2 opacity-0'
+                }`}
+              >
+                <ChevronDown size={20} aria-hidden="true" />
+              </button>
             </div>
             {authStatus.authenticated && streams.length > 0 && (
               <form onSubmit={handleSend} className="shrink-0 border-t border-white/10 p-2">
@@ -223,7 +328,7 @@ export const ChatTile = forwardRef<HTMLDivElement, ChatTileProps>(function ChatT
                     >
                       <SelectValue placeholder="Canal" className="min-w-0 truncate" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent side="top">
                       {streams.map((stream) => (
                         <SelectItem key={stream.channel} value={stream.channel}>
                           <span className="truncate">{stream.channel}</span>

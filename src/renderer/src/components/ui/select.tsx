@@ -37,12 +37,15 @@ function SelectValue(props: SelectPrimitive.Value.Props): React.JSX.Element {
 
 function SelectContent({
   className,
+  side,
   children,
   ...props
-}: SelectPrimitive.Popup.Props): React.JSX.Element {
+}: SelectPrimitive.Popup.Props & {
+  side?: SelectPrimitive.Positioner.Props['side']
+}): React.JSX.Element {
   return (
     <SelectPrimitive.Portal data-slot="select-portal">
-      <SelectPrimitive.Positioner data-slot="select-positioner" className="z-50">
+      <SelectPrimitive.Positioner data-slot="select-positioner" className="z-50" side={side}>
         <SelectPrimitive.Popup
           data-slot="select-popup"
           className={cn(
