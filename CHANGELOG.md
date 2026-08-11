@@ -15,6 +15,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Changed
+
+### Fixed
+
+### Removed
+
+## [1.2.0] - 2026-08-11
+
+### Added
+
 - **Auto-updates** — the app now checks GitHub Releases on launch and automatically downloads the latest version in the background.
   - Toast notification with download progress and a "Reiniciar e instalar" action once the new version is ready.
   - "Actualizaciones" section in the settings drawer showing the current version, a manual "Buscar" check, and install status.
@@ -115,7 +125,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-[Unreleased]: https://github.com/meiyerDev/streamgrid/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/meiyerDev/streamgrid/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/meiyerDev/streamgrid/releases/tag/v1.2.0
 [1.1.0]: https://github.com/meiyerDev/streamgrid/releases/tag/v1.1.0
 [1.0.1]: https://github.com/meiyerDev/streamgrid/releases/tag/v1.0.1
 [1.0.0]: https://github.com/meiyerDev/streamgrid/releases/tag/v1.0.0
