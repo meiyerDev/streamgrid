@@ -336,6 +336,12 @@ async function sendMessage(input: ChatSendInput): Promise<ChatSendResult> {
   }
   client.say(`#${key}`, message)
   log(`SEND-OK channel=#${key} len=${message.length}`)
+  send('chat:message', {
+    channel,
+    username: creds.username,
+    message,
+    timestamp: Date.now()
+  } satisfies ChatMessage)
   return { ok: true }
 }
 
