@@ -7,6 +7,7 @@ import { registerProfileHandlers } from './profiles'
 import { registerSettingsHandlers, applySettings, getSettings } from './settings'
 import { attachViewManager, registerViewHandlers, applyMasterVolume } from './stream-views'
 import { attachChatManager, registerChatHandlers } from './chat'
+import { registerChatAuthHandlers } from './chat-auth'
 
 function createWindow(): BrowserWindow {
   // Create the browser window.
@@ -79,6 +80,7 @@ app.whenReady().then(() => {
   registerProfileHandlers()
   registerViewHandlers()
   registerChatHandlers()
+  registerChatAuthHandlers()
 
   let lastSettings = getSettings()
   registerSettingsHandlers((settings) => {

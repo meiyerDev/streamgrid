@@ -5,6 +5,7 @@ import type { ProfilesStore, StreamConfig, StreamLayout } from '../shared/stream
 import type { AppSettings, DisplayInfo } from '../shared/settings'
 import type { ViewsSyncPayload } from '../shared/views'
 import type { ChatChannel, ChatMessage, ChatStatusPayload } from '../shared/chat'
+import type { TwitchChatStatus } from '../shared/chat-auth'
 
 // Custom APIs for renderer
 const api = {
@@ -60,6 +61,11 @@ const api = {
       ipcRenderer.on('chat:status', listener)
       return () => ipcRenderer.removeListener('chat:status', listener)
     }
+  },
+  chatAuth: {
+    getStatus: (): Promise<TwitchChatStatus> => ipcRenderer.invoke('chatAuth:getStatus'),
+    login: (): Promise<TwitchChatStatus> => ipcRenderer.invoke('chatAuth:login'),
+    logout: (): Promise<TwitchChatStatus> => ipcRenderer.invoke('chatAuth:logout')
   }
 }
 

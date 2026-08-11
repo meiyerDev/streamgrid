@@ -31,6 +31,7 @@
     "irc-framework": "^4.14.0",
     "lucide-react": "^1.28.0",
     "react-grid-layout": "^2.2.4",
+    "selfsigned": "^5.5.0",
     "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {

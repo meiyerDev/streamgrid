@@ -4,6 +4,7 @@ import type { ProfilesStore, StreamConfig, StreamLayout } from '../shared/stream
 import type { AppSettings, DisplayInfo } from '../shared/settings'
 import type { ViewsSyncPayload } from '../shared/views'
 import type { ChatChannel, ChatMessage, ChatStatusPayload } from '../shared/chat'
+import type { TwitchChatStatus } from '../shared/chat-auth'
 
 declare global {
   interface Window {
@@ -40,6 +41,11 @@ declare global {
         setChannels: (channels: ChatChannel[]) => Promise<void>
         onMessage: (cb: (message: ChatMessage) => void) => () => void
         onStatus: (cb: (payload: ChatStatusPayload) => void) => () => void
+      }
+      chatAuth: {
+        getStatus: () => Promise<TwitchChatStatus>
+        login: () => Promise<TwitchChatStatus>
+        logout: () => Promise<TwitchChatStatus>
       }
       app: {
         quit: () => Promise<void>
