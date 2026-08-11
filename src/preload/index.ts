@@ -4,7 +4,13 @@ import type { ProviderId, ProviderSession } from '../shared/providers'
 import type { ProfilesStore, StreamConfig, StreamLayout } from '../shared/streams'
 import type { AppSettings, DisplayInfo } from '../shared/settings'
 import type { ViewsSyncPayload } from '../shared/views'
-import type { ChatChannel, ChatMessage, ChatStatusPayload } from '../shared/chat'
+import type {
+  ChatChannel,
+  ChatMessage,
+  ChatSendInput,
+  ChatSendResult,
+  ChatStatusPayload
+} from '../shared/chat'
 import type { TwitchChatStatus } from '../shared/chat-auth'
 
 // Custom APIs for renderer
@@ -51,6 +57,8 @@ const api = {
   chat: {
     setChannels: (channels: ChatChannel[]): Promise<void> =>
       ipcRenderer.invoke('chat:setChannels', channels),
+    sendMessage: (input: ChatSendInput): Promise<ChatSendResult> =>
+      ipcRenderer.invoke('chat:sendMessage', input),
     onMessage: (cb: (message: ChatMessage) => void): (() => void) => {
       const listener = (_event: unknown, message: ChatMessage): void => cb(message)
       ipcRenderer.on('chat:message', listener)

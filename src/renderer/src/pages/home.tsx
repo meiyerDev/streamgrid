@@ -646,6 +646,7 @@ export function HomePage(): React.JSX.Element {
                   key={CHAT_ID}
                   edit={edit}
                   profileId={activeProfileId}
+                  streams={streams}
                   onHide={() => void setChatEnabled(false)}
                 />
               )}

@@ -1,10 +1,20 @@
-import { forwardRef, useEffect, useRef, useState, type HTMLAttributes } from 'react'
-import { GripVertical, MessagesSquare, X } from 'lucide-react'
-import { CHAT_MESSAGE_CAP, type ChatMessage, type ChatStatus } from '../../../shared/chat'
+import { forwardRef, useEffect, useMemo, useRef, useState, type HTMLAttributes } from 'react'
+import { GripVertical, MessagesSquare, Send, X } from 'lucide-react'
+import {
+  CHAT_MESSAGE_CAP,
+  CHAT_MSG_MAX_LENGTH,
+  type ChatMessage,
+  type ChatStatus
+} from '../../../shared/chat'
+import type { TwitchChatStatus } from '../../../shared/chat-auth'
+import type { StreamConfig } from '../../../shared/streams'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
+import { Textarea } from './ui/textarea'
 
 interface ChatTileProps extends HTMLAttributes<HTMLDivElement> {
   edit: boolean
   profileId: string
+  streams: StreamConfig[]
   onHide: () => void
 }
 
@@ -43,11 +53,16 @@ function userColor(username: string): string {
 }
 
 export const ChatTile = forwardRef<HTMLDivElement, ChatTileProps>(function ChatTile(
-  { edit, profileId, onHide, className, style, children, ...rest },
+  { edit, profileId, streams, onHide, className, style, children, ...rest },
   ref
 ): React.JSX.Element {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [status, setStatus] = useState<ChatStatus>('idle')
+  const [authStatus, setAuthStatus] = useState<TwitchChatStatus>({ authenticated: false })
+  const [channel, setChannel] = useState(streams[0]?.channel ?? '')
+  const [draft, setDraft] = useState('')
+  const [sending, setSending] = useState(false)
+  const [error, setError] = useState<string | undefined>()
   const scrollerRef = useRef<HTMLDivElement>(null)
   const stickToBottom = useRef(true)
 
@@ -66,7 +81,26 @@ export const ChatTile = forwardRef<HTMLDivElement, ChatTileProps>(function ChatT
   useEffect(() => {
     setMessages([])
     setStatus('idle')
+    setDraft('')
+    setError(undefined)
   }, [profileId])
+
+  useEffect(() => {
+    let mounted = true
+    window.api.chatAuth.getStatus().then((next) => {
+      if (!mounted) return
+      setAuthStatus(next)
+    })
+    return () => {
+      mounted = false
+    }
+  }, [profileId])
+
+  useEffect(() => {
+    if (!streams.some((stream) => stream.channel === channel)) {
+      setChannel(streams[0]?.channel ?? '')
+    }
+  }, [streams, channel])
 
   useEffect(() => {
     const el = scrollerRef.current
@@ -77,6 +111,31 @@ export const ChatTile = forwardRef<HTMLDivElement, ChatTileProps>(function ChatT
     const el = scrollerRef.current
     if (!el) return
     stickToBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 40
+  }
+
+  const channelItems = useMemo(
+    () => Object.fromEntries(streams.map((stream) => [stream.channel, stream.channel])),
+    [streams]
+  )
+
+  const trimmed = draft.trim()
+  const canSend = trimmed.length > 0 && trimmed.length <= CHAT_MSG_MAX_LENGTH && !sending
+
+  async function handleSend(event?: React.FormEvent): Promise<void> {
+    event?.preventDefault()
+    if (!canSend) return
+    setSending(true)
+    setError(undefined)
+    try {
+      const result = await window.api.chat.sendMessage({ channel, message: trimmed })
+      if (result.ok) {
+        setDraft('')
+      } else {
+        setError(result.error ?? 'No se pudo enviar el mensaje')
+      }
+    } finally {
+      setSending(false)
+    }
   }
 
   return (
@@ -147,6 +206,59 @@ export const ChatTile = forwardRef<HTMLDivElement, ChatTileProps>(function ChatT
                 </div>
               )}
             </div>
+            {authStatus.authenticated && streams.length > 0 && (
+              <form onSubmit={handleSend} className="shrink-0 border-t border-white/10 p-2">
+                <div className="flex items-end gap-2">
+                  <Select
+                    items={channelItems}
+                    value={channel}
+                    onValueChange={(value) => {
+                      if (value) setChannel(value)
+                    }}
+                  >
+                    <SelectTrigger
+                      aria-label="Canal de destino"
+                      title="Canal de destino"
+                      className="h-9 w-32 shrink-0 gap-1 px-3 text-xs"
+                    >
+                      <SelectValue placeholder="Canal" className="min-w-0 truncate" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {streams.map((stream) => (
+                        <SelectItem key={stream.channel} value={stream.channel}>
+                          <span className="truncate">{stream.channel}</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Textarea
+                    value={draft}
+                    onChange={(event) => setDraft(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' && !event.shiftKey) {
+                        event.preventDefault()
+                        void handleSend()
+                      }
+                    }}
+                    placeholder="Escribe un mensaje…"
+                    maxLength={CHAT_MSG_MAX_LENGTH}
+                    rows={1}
+                    disabled={sending}
+                    className="min-h-9 min-w-0 flex-1 resize-none py-2"
+                  />
+                  <button
+                    type="submit"
+                    aria-label="Enviar mensaje"
+                    title="Enviar mensaje"
+                    disabled={!canSend}
+                    className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-blurple text-white transition hover:bg-blurple/90 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-[0.95] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <Send size={16} aria-hidden="true" />
+                  </button>
+                </div>
+                {error && <p className="mt-1.5 px-1 text-xs text-red-400">{error}</p>}
+              </form>
+            )}
           </>
         )}
       </div>

@@ -10,7 +10,8 @@ import { ensureCert, registerCertificateTrust } from './chat-cert'
 // App registrada en dev.twitch.tv con redirect URI https://localhost:6060
 const TWITCH_CHAT_CLIENT_ID = 'wlxvt7l02mx8w6hnmubw8wc7uagzvj'
 const REDIRECT_URI = 'https://localhost:6060'
-const CHAT_SCOPE = 'user:read:chat user:write:chat'
+const CHAT_SCOPE = 'chat:read chat:edit'
+const IRC_SCOPES = ['chat:read', 'chat:edit']
 const PORT = 6060
 const AUTH_TIMEOUT_MS = 5 * 60 * 1000
 
@@ -27,6 +28,18 @@ interface PendingAuth {
   timer: NodeJS.Timeout
   resolve: (session: StoredSession) => void
   reject: (error: Error) => void
+}
+
+type TokenChangeListener = () => void
+const tokenChangeListeners = new Set<TokenChangeListener>()
+
+export function onChatTokenChange(listener: TokenChangeListener): () => void {
+  tokenChangeListeners.add(listener)
+  return () => tokenChangeListeners.delete(listener)
+}
+
+function notifyTokenChanged(): void {
+  for (const listener of tokenChangeListeners) listener()
 }
 
 let server: Server | null = null
@@ -57,11 +70,31 @@ function deleteToken(): void {
   if (existsSync(tokenFilePath())) unlinkSync(tokenFilePath())
 }
 
+function hasIrcScopes(session: StoredSession): boolean {
+  return IRC_SCOPES.every((scope) => session.scopes?.includes(scope))
+}
+
 function statusFromSession(session: StoredSession): TwitchChatStatus {
+  if (!hasIrcScopes(session)) {
+    return { authenticated: false, error: 'Tu cuenta de Twitch Chat necesita volver a conectarse' }
+  }
   const expired = Date.now() > session.obtainedAt + session.expiresIn * 1000
   if (expired)
     return { authenticated: false, error: 'El token de chat expiró, vuelve a conectarte' }
   return { authenticated: true, username: session.username }
+}
+
+export function getChatCredentials(): { username: string; oauth: string } | null {
+  try {
+    const session = readToken()
+    if (!session) return null
+    if (!hasIrcScopes(session)) return null
+    if (Date.now() > session.obtainedAt + session.expiresIn * 1000) return null
+    const token = safeStorage.decryptString(Buffer.from(session.accessTokenEnc, 'base64'))
+    return { username: session.username, oauth: `oauth:${token}` }
+  } catch {
+    return null
+  }
 }
 
 function getStatus(): TwitchChatStatus {
@@ -103,6 +136,7 @@ function settlePending(session: StoredSession): void {
   pending = null
   closeAuthWindow()
   stopServer()
+  notifyTokenChanged()
 }
 
 function failPending(error: Error): void {
@@ -374,8 +408,14 @@ async function login(): Promise<TwitchChatStatus> {
   return statusFromSession(session)
 }
 
+export function invalidateChatSession(): void {
+  deleteToken()
+  notifyTokenChanged()
+}
+
 async function logout(): Promise<void> {
   deleteToken()
+  notifyTokenChanged()
   if (pending) failPending(new Error('Sesión cerrada'))
   stopServer()
 }

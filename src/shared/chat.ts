@@ -20,3 +20,15 @@ export interface ChatStatusPayload {
 }
 
 export const CHAT_MESSAGE_CAP = 500
+
+export const CHAT_MSG_MAX_LENGTH = 500
+
+export interface ChatSendInput {
+  channel: string
+  message: string
+}
+
+export interface ChatSendResult {
+  ok: boolean
+  error?: string
+}

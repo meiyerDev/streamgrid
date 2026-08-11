@@ -3,7 +3,13 @@ import type { ProviderId, ProviderSession } from '../shared/providers'
 import type { ProfilesStore, StreamConfig, StreamLayout } from '../shared/streams'
 import type { AppSettings, DisplayInfo } from '../shared/settings'
 import type { ViewsSyncPayload } from '../shared/views'
-import type { ChatChannel, ChatMessage, ChatStatusPayload } from '../shared/chat'
+import type {
+  ChatChannel,
+  ChatMessage,
+  ChatSendInput,
+  ChatSendResult,
+  ChatStatusPayload
+} from '../shared/chat'
 import type { TwitchChatStatus } from '../shared/chat-auth'
 
 declare global {
@@ -39,6 +45,7 @@ declare global {
       }
       chat: {
         setChannels: (channels: ChatChannel[]) => Promise<void>
+        sendMessage: (input: ChatSendInput) => Promise<ChatSendResult>
         onMessage: (cb: (message: ChatMessage) => void) => () => void
         onStatus: (cb: (payload: ChatStatusPayload) => void) => () => void
       }
