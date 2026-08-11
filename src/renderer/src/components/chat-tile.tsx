@@ -328,7 +328,7 @@ export const ChatTile = forwardRef<HTMLDivElement, ChatTileProps>(function ChatT
                     >
                       <SelectValue placeholder="Canal" className="min-w-0 truncate" />
                     </SelectTrigger>
-                    <SelectContent side="top">
+                    <SelectContent side="top" alignItemWithTrigger={false}>
                       {streams.map((stream) => (
                         <SelectItem key={stream.channel} value={stream.channel}>
                           <span className="truncate">{stream.channel}</span>

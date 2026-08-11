@@ -38,14 +38,21 @@ function SelectValue(props: SelectPrimitive.Value.Props): React.JSX.Element {
 function SelectContent({
   className,
   side,
+  alignItemWithTrigger,
   children,
   ...props
 }: SelectPrimitive.Popup.Props & {
   side?: SelectPrimitive.Positioner.Props['side']
+  alignItemWithTrigger?: SelectPrimitive.Positioner.Props['alignItemWithTrigger']
 }): React.JSX.Element {
   return (
     <SelectPrimitive.Portal data-slot="select-portal">
-      <SelectPrimitive.Positioner data-slot="select-positioner" className="z-50" side={side}>
+      <SelectPrimitive.Positioner
+        data-slot="select-positioner"
+        className="z-50"
+        side={side}
+        alignItemWithTrigger={alignItemWithTrigger}
+      >
         <SelectPrimitive.Popup
           data-slot="select-popup"
           className={cn(
