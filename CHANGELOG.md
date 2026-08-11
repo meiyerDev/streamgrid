@@ -15,6 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Auto-updates** — the app now checks GitHub Releases on launch and automatically downloads the latest version in the background.
+  - Toast notification with download progress and a "Reiniciar e instalar" action once the new version is ready.
+  - "Actualizaciones" section in the settings drawer showing the current version, a manual "Buscar" check, and install status.
+  - `electron-updater` wired to the GitHub provider; only the `latest` release is considered.
+
 ### Changed
 
 ### Fixed

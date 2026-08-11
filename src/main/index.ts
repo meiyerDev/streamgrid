@@ -8,6 +8,7 @@ import { registerSettingsHandlers, applySettings, getSettings } from './settings
 import { attachViewManager, registerViewHandlers, applyMasterVolume } from './stream-views'
 import { attachChatManager, registerChatHandlers } from './chat'
 import { registerChatAuthHandlers } from './chat-auth'
+import { registerUpdater, scheduleUpdateCheck } from './updater'
 
 function createWindow(): BrowserWindow {
   // Create the browser window.
@@ -81,6 +82,7 @@ app.whenReady().then(() => {
   registerViewHandlers()
   registerChatHandlers()
   registerChatAuthHandlers()
+  registerUpdater(() => BrowserWindow.getAllWindows()[0] ?? null)
 
   let lastSettings = getSettings()
   registerSettingsHandlers((settings) => {
@@ -93,6 +95,8 @@ app.whenReady().then(() => {
   })
 
   createWindow()
+
+  scheduleUpdateCheck(5000)
 
   app.on('activate', function () {
     // On macOS it's common to re-create a window in the app when the

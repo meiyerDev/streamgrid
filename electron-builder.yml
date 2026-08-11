@@ -43,5 +43,6 @@ deb:
   artifactName: StreamGrid-${arch}.${ext}
 npmRebuild: false
 publish:
-  provider: generic
-  url: https://github.com/meiyerDev/streamgrid/releases/download/latest
+  provider: github
+  owner: meiyerDev
+  repo: streamgrid

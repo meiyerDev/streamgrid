@@ -12,6 +12,7 @@ import type {
   ChatStatusPayload
 } from '../shared/chat'
 import type { TwitchChatStatus } from '../shared/chat-auth'
+import type { UpdaterEvent, UpdaterState } from '../shared/updater'
 
 // Custom APIs for renderer
 const api = {
@@ -74,6 +75,16 @@ const api = {
     getStatus: (): Promise<TwitchChatStatus> => ipcRenderer.invoke('chatAuth:getStatus'),
     login: (): Promise<TwitchChatStatus> => ipcRenderer.invoke('chatAuth:login'),
     logout: (): Promise<TwitchChatStatus> => ipcRenderer.invoke('chatAuth:logout')
+  },
+  updater: {
+    getState: (): Promise<UpdaterState> => ipcRenderer.invoke('updater:getState'),
+    check: (): Promise<UpdaterState> => ipcRenderer.invoke('updater:check'),
+    install: (): Promise<void> => ipcRenderer.invoke('updater:install'),
+    onEvent: (cb: (event: UpdaterEvent) => void): (() => void) => {
+      const listener = (_event: unknown, updaterEvent: UpdaterEvent): void => cb(updaterEvent)
+      ipcRenderer.on('updater:event', listener)
+      return () => ipcRenderer.removeListener('updater:event', listener)
+    }
   }
 }
 

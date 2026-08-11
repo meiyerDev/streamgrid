@@ -1,7 +1,8 @@
-import { LogOut, Volume2 } from 'lucide-react'
+import { Download, LogOut, RefreshCcw, Rocket, Volume2 } from 'lucide-react'
 import type { DisplayMode } from '../../../shared/settings'
 import { MAX_VOLUME } from '../../../shared/settings'
 import { useSettings } from '../hooks/use-settings'
+import { useUpdater } from '../hooks/use-updater'
 import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from './ui/drawer'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 
@@ -13,6 +14,78 @@ const MODE_LABELS: Record<DisplayMode, string> = {
 interface SettingsDrawerProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+}
+
+function UpdateSection(): React.JSX.Element {
+  const { state, check, install } = useUpdater()
+
+  return (
+    <div className="flex flex-col gap-2">
+      <span className="flex items-center gap-2 text-sm font-semibold text-white">
+        <Download size={16} aria-hidden="true" />
+        Actualizaciones
+      </span>
+      <div className="flex items-center justify-between gap-3 rounded-xl bg-surface px-4 py-3">
+        <div className="flex min-w-0 flex-col text-left">
+          <span className="text-sm font-semibold text-white">StreamGrid</span>
+          <span className="text-xs text-white/50">v{state.currentVersion}</span>
+          {state.status === 'error' && (
+            <span className="mt-1 text-xs text-red-400">{state.error}</span>
+          )}
+        </div>
+        {state.disabled ? (
+          <button
+            type="button"
+            disabled
+            title="El actualizador solo está activo en la aplicación instalada"
+            className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-surface px-3 py-1.5 text-xs font-semibold text-white/40"
+          >
+            <RefreshCcw size={14} aria-hidden="true" />
+            No disponible en dev
+          </button>
+        ) : state.status === 'downloading' && state.percent != null ? (
+          <div className="flex shrink-0 items-center gap-2">
+            <div className="h-1.5 w-24 overflow-hidden rounded-full bg-white/10">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-blurple to-magenta transition-[width] duration-300"
+                style={{ width: `${state.percent}%` }}
+              />
+            </div>
+            <span className="w-8 text-right text-xs tabular-nums text-white/70">
+              {Math.round(state.percent)}%
+            </span>
+          </div>
+        ) : state.status === 'checking' ? (
+          <button
+            type="button"
+            disabled
+            className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-surface px-3 py-1.5 text-xs font-semibold text-white/50"
+          >
+            <RefreshCcw size={14} className="animate-spin" aria-hidden="true" />
+            Buscando…
+          </button>
+        ) : state.status === 'downloaded' ? (
+          <button
+            type="button"
+            onClick={install}
+            className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-blurple px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-blurple/90"
+          >
+            <Rocket size={14} aria-hidden="true" />
+            Reiniciar e instalar
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={check}
+            className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-surface px-3 py-1.5 text-xs font-semibold text-white/70 transition-colors hover:bg-surface hover:text-white"
+          >
+            <RefreshCcw size={14} aria-hidden="true" />
+            {state.newVersion ? `Nueva v${state.newVersion}` : 'Buscar'}
+          </button>
+        )}
+      </div>
+    </div>
+  )
 }
 
 export function SettingsDrawer({ open, onOpenChange }: SettingsDrawerProps): React.JSX.Element {
@@ -101,6 +174,8 @@ export function SettingsDrawer({ open, onOpenChange }: SettingsDrawerProps): Rea
               </span>
             </div>
           </div>
+
+          <UpdateSection />
         </div>
         <div className="border-t px-6 py-4">
           <button

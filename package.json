@@ -28,6 +28,7 @@
     "@tanstack/history": "^1.162.0",
     "@tanstack/react-router": "^1.170.18",
     "clsx": "^2.1.1",
+    "electron-updater": "^6.8.9",
     "irc-framework": "^4.14.0",
     "lucide-react": "^1.28.0",
     "react-grid-layout": "^2.2.4",

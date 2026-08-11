@@ -27,6 +27,10 @@ _Un overlay de streams de Twitch construido con Electron, React y TypeScript._
 [📥 Descargar última versión para Mac](https://github.com/meiyerDev/streamgrid/releases/latest/download/StreamGrid.dmg)  
 [📥 Descargar última versión para Linux](https://github.com/meiyerDev/streamgrid/releases/latest/download/StreamGrid-x86_64.AppImage)
 
+**Actualizaciones automáticas:** al etiquetar un release (`vX.Y.Z`), la app instalada detecta la última versión publicada en GitHub Releases y se actualiza sola. Linux actualiza vía AppImage; en macOS se requiere firma/notarización para que la actualización automática funcione.
+
+Para probar el flujo de actualización en desarrollo: `STREAMGRID_UPDATE_TEST=1 pnpm dev` (usa `dev-app-update.yml` del root).
+
 ---
 
 ## Screenshots / Capturas
@@ -53,6 +57,7 @@ _Un overlay de streams de Twitch construido con Electron, React y TypeScript._
 - **Fullscreen preview** — push the grid to a chosen monitor in fullscreen (_vista previa fullscreen del grid en un monitor elegido_).
 - **Master volume** — global mute/volume applied to every stream tile (_volumen maestro aplicado a todos los streams_).
 - **Streaming-native UI** — Discord-style deep-indigo design language driven by `DESIGN.md` (_UI con estética de streaming, según el lenguaje de diseño en `DESIGN.md`_).
+- **Auto-updates** — StreamGrid checks GitHub Releases on launch and installs the latest version automatically, with an in-app toast and install button (_actualizaciones automáticas vía GitHub Releases, con aviso y botón de reinicio en la app_).
 
 ---
 

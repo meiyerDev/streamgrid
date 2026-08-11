@@ -11,6 +11,7 @@ import type {
   ChatStatusPayload
 } from '../shared/chat'
 import type { TwitchChatStatus } from '../shared/chat-auth'
+import type { UpdaterEvent, UpdaterState } from '../shared/updater'
 
 declare global {
   interface Window {
@@ -56,6 +57,12 @@ declare global {
       }
       app: {
         quit: () => Promise<void>
+      }
+      updater: {
+        getState: () => Promise<UpdaterState>
+        check: () => Promise<UpdaterState>
+        install: () => Promise<void>
+        onEvent: (cb: (event: UpdaterEvent) => void) => () => void
       }
     }
   }
