@@ -21,6 +21,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+## [1.3.0] - 2026-08-11
+
+### Added
+
+- **"Jump to latest" button in chat** — a floating button appears at the bottom-right of the chat when you scroll up through the history, letting you jump back to the most recent messages with a single click.
+
+### Changed
+
+### Fixed
+
+- **Stream selector in the chat composer** now always opens upward, staying inside the chat tile. It previously opened downward and rendered over adjacent stream tiles (Electron webviews cover the popup there), making it impossible to pick another channel.
+
+### Removed
+
 ## [1.2.0] - 2026-08-11
 
 ### Added
@@ -125,7 +139,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-[Unreleased]: https://github.com/meiyerDev/streamgrid/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/meiyerDev/streamgrid/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/meiyerDev/streamgrid/releases/tag/v1.3.0
 [1.2.0]: https://github.com/meiyerDev/streamgrid/releases/tag/v1.2.0
 [1.1.0]: https://github.com/meiyerDev/streamgrid/releases/tag/v1.1.0
 [1.0.1]: https://github.com/meiyerDev/streamgrid/releases/tag/v1.0.1
