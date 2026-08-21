@@ -60,8 +60,11 @@ export async function ensureCert(): Promise<{ key: string; cert: string }> {
   return { key: result.private, cert: result.cert }
 }
 
-export function registerCertificateTrust(host = 'localhost'): void {
-  session.defaultSession.setCertificateVerifyProc((request, callback) => {
+function makeVerifyProc(host: string) {
+  return (
+    request: { hostname: string; certificate?: { data: string | Buffer } },
+    callback: (n: number) => void
+  ) => {
     if (request.hostname !== host) {
       callback(-3)
       return
@@ -82,9 +85,21 @@ export function registerCertificateTrust(host = 'localhost'): void {
       return
     }
     callback(-3)
-  })
+  }
+}
+
+export function registerCertificateTrust(host = 'localhost', partition?: string): void {
+  const targetSession = partition ? session.fromPartition(partition) : session.defaultSession
+  targetSession.setCertificateVerifyProc(makeVerifyProc(host))
+
+  if (partition) {
+    session.defaultSession.setCertificateVerifyProc(makeVerifyProc(host))
+  }
 
   app.on('will-quit', () => {
-    session.defaultSession.setCertificateVerifyProc(null)
+    targetSession.setCertificateVerifyProc(null)
+    if (partition) {
+      session.defaultSession.setCertificateVerifyProc(null)
+    }
   })
 }

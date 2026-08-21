@@ -10,13 +10,15 @@ import { ensureCert, registerCertificateTrust } from './chat-cert'
 // App registrada en dev.twitch.tv con redirect URI https://localhost:6060
 const TWITCH_CHAT_CLIENT_ID = 'wlxvt7l02mx8w6hnmubw8wc7uagzvj'
 const REDIRECT_URI = 'https://localhost:6060'
-const CHAT_SCOPE = 'chat:read chat:edit'
+const CHAT_SCOPE = 'chat:read chat:edit user:read:follows'
 const IRC_SCOPES = ['chat:read', 'chat:edit']
+const FOLLOWS_SCOPES = ['user:read:follows']
 const PORT = 6060
 const AUTH_TIMEOUT_MS = 5 * 60 * 1000
 
 interface StoredSession {
   username: string
+  userId: string
   accessTokenEnc: string
   scopes: string[]
   obtainedAt: number
@@ -95,6 +97,23 @@ export function getChatCredentials(): { username: string; oauth: string } | null
   } catch {
     return null
   }
+}
+
+export function getStoredSession(): { username: string; userId: string; token: string } | null {
+  try {
+    const session = readToken()
+    if (!session) return null
+    if (!hasFollowsScopes(session)) return null
+    if (Date.now() > session.obtainedAt + session.expiresIn * 1000) return null
+    const token = safeStorage.decryptString(Buffer.from(session.accessTokenEnc, 'base64'))
+    return { username: session.username, userId: session.userId, token }
+  } catch {
+    return null
+  }
+}
+
+function hasFollowsScopes(session: StoredSession): boolean {
+  return FOLLOWS_SCOPES.every((scope) => session.scopes?.includes(scope))
 }
 
 function getStatus(): TwitchChatStatus {
@@ -240,6 +259,7 @@ function handleTokenPost(body: string, res: ServerResponse): void {
       }
       const session: StoredSession = {
         username: profile.login,
+        userId: profile.userId,
         accessTokenEnc,
         scopes: profile.scopes,
         obtainedAt: Date.now(),
@@ -257,6 +277,7 @@ function handleTokenPost(body: string, res: ServerResponse): void {
 
 interface TwitchProfile {
   login: string
+  userId: string
   scopes: string[]
   expiresIn: number
 }
@@ -270,10 +291,16 @@ async function fetchProfile(token: string): Promise<TwitchProfile> {
   }
   const data = (await response.json()) as {
     login: string
+    user_id: string
     scopes: string[]
     expires_in: number
   }
-  return { login: data.login, scopes: data.scopes, expiresIn: data.expires_in }
+  return {
+    login: data.login,
+    userId: data.user_id,
+    scopes: data.scopes,
+    expiresIn: data.expires_in
+  }
 }
 
 function sanitizeUrl(rawUrl: string): string {
@@ -315,7 +342,7 @@ function openAuthWindow(authorizeUrl: string): void {
     show: false,
     autoHideMenuBar: true,
     title: 'Twitch Chat — abriendo…',
-    webPreferences: { sandbox: true }
+    webPreferences: { sandbox: true, partition: 'persist:twitch' }
   })
   authWindow = win
 
@@ -478,7 +505,7 @@ function errorPage(description: string): string {
 }
 
 export function registerChatAuthHandlers(): void {
-  registerCertificateTrust('localhost')
+  registerCertificateTrust('localhost', 'persist:twitch')
   void ensureCert().catch((error: unknown) => {
     console.log(`[chat-auth] ${Date.now()} CERT-PREWARM-FAIL ${String(error)}`)
   })

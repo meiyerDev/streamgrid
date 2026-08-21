@@ -12,6 +12,7 @@ import type {
   ChatStatusPayload
 } from '../shared/chat'
 import type { TwitchChatStatus } from '../shared/chat-auth'
+import type { GetFollowedResult, SubscriptionsStatus } from '../shared/subscriptions'
 import type { UpdaterEvent, UpdaterState } from '../shared/updater'
 
 // Custom APIs for renderer
@@ -85,6 +86,10 @@ const api = {
       ipcRenderer.on('updater:event', listener)
       return () => ipcRenderer.removeListener('updater:event', listener)
     }
+  },
+  subscriptions: {
+    getStatus: (): Promise<SubscriptionsStatus> => ipcRenderer.invoke('subscriptions:getStatus'),
+    getFollowed: (): Promise<GetFollowedResult> => ipcRenderer.invoke('subscriptions:getFollowed')
   }
 }
 

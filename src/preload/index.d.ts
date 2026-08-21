@@ -11,6 +11,7 @@ import type {
   ChatStatusPayload
 } from '../shared/chat'
 import type { TwitchChatStatus } from '../shared/chat-auth'
+import type { GetFollowedResult, SubscriptionsStatus } from '../shared/subscriptions'
 import type { UpdaterEvent, UpdaterState } from '../shared/updater'
 
 declare global {
@@ -63,6 +64,10 @@ declare global {
         check: () => Promise<UpdaterState>
         install: () => Promise<void>
         onEvent: (cb: (event: UpdaterEvent) => void) => () => void
+      }
+      subscriptions: {
+        getStatus: () => Promise<SubscriptionsStatus>
+        getFollowed: () => Promise<GetFollowedResult>
       }
     }
   }

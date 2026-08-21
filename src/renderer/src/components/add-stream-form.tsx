@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Plus } from 'lucide-react'
 import { PROVIDERS, type ProviderId } from '../../../shared/providers'
 import { PROVIDER_ICONS } from '../providers'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
+import { useSubscribedChannels } from '../hooks/use-subscriptions'
 
 interface AddStreamFormProps {
   onAdd: (providerId: ProviderId, channel: string) => Promise<void>
@@ -33,15 +34,47 @@ export function AddStreamForm({ onAdd, onCancel }: AddStreamFormProps): React.JS
   const [channel, setChannel] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [adding, setAdding] = useState(false)
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const suggestionsRef = useRef<HTMLDivElement>(null)
+
+  const { channels: followedChannels, loading: loadingFollowed } = useSubscribedChannels()
 
   const trimmed = channel.trim()
   const invalid = trimmed.length === 0
+
+  const suggestions =
+    channel.trim().length > 0 && providerId === 'twitch'
+      ? followedChannels.filter(
+          (c) =>
+            c.providerId === providerId &&
+            c.channel.toLowerCase().includes(channel.trim().toLowerCase())
+        )
+      : []
+
+  const showSuggestionsDropdown = showSuggestions && suggestions.length > 0
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent): void => {
+      if (
+        suggestionsRef.current &&
+        !suggestionsRef.current.contains(event.target as Node) &&
+        inputRef.current &&
+        !inputRef.current.contains(event.target as Node)
+      ) {
+        setShowSuggestions(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   async function handleSubmit(event: React.FormEvent): Promise<void> {
     event.preventDefault()
     if (invalid || adding) return
     setAdding(true)
     setError(null)
+    setShowSuggestions(false)
     try {
       await onAdd(providerId, trimmed)
       setChannel('')
@@ -50,6 +83,12 @@ export function AddStreamForm({ onAdd, onCancel }: AddStreamFormProps): React.JS
     } finally {
       setAdding(false)
     }
+  }
+
+  function handleSelectSuggestion(channelName: string): void {
+    setChannel(channelName)
+    setShowSuggestions(false)
+    inputRef.current?.focus()
   }
 
   return (
@@ -77,17 +116,50 @@ export function AddStreamForm({ onAdd, onCancel }: AddStreamFormProps): React.JS
           </SelectContent>
         </Select>
       </div>
-      <div className="flex flex-col gap-1.5">
+      <div className="relative flex flex-col gap-1.5">
         <label htmlFor="stream-channel" className="text-sm font-semibold text-white/80">
           Canal
         </label>
         <input
+          ref={inputRef}
           id="stream-channel"
           value={channel}
-          onChange={(event) => setChannel(event.target.value)}
+          onChange={(event) => {
+            setChannel(event.target.value)
+            setShowSuggestions(true)
+          }}
+          onFocus={() => setShowSuggestions(true)}
           placeholder="nombre del canal"
+          autoComplete="off"
           className="h-11 w-full rounded-xl bg-surface px-4 text-sm text-white placeholder:text-white/40 focus-visible:outline-2 focus-visible:outline-offset-2"
         />
+        {showSuggestionsDropdown && (
+          <div
+            ref={suggestionsRef}
+            className="absolute top-full z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-xl bg-surface py-1 shadow-lg"
+          >
+            {loadingFollowed ? (
+              <div className="px-4 py-2 text-sm text-white/50">Cargando seguidos...</div>
+            ) : (
+              suggestions.map((suggestion) => {
+                const provider = PROVIDERS.find((p) => p.id === suggestion.providerId)
+                const Icon = provider ? PROVIDER_ICONS[provider.id] : null
+                return (
+                  <button
+                    key={`${suggestion.providerId}-${suggestion.channel}`}
+                    type="button"
+                    onClick={() => handleSelectSuggestion(suggestion.channel)}
+                    className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-white hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-[-2px]"
+                  >
+                    {Icon && <Icon className="size-4 shrink-0 text-blurple" aria-hidden="true" />}
+                    <span className="truncate">{suggestion.channel}</span>
+                    <span className="ml-auto text-xs text-white/40">seguido</span>
+                  </button>
+                )
+              })
+            )}
+          </div>
+        )}
       </div>
       {error && <p className="text-sm text-red-400">{error}</p>}
       <div className="mt-2 flex gap-2">

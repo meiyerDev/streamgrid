@@ -8,6 +8,7 @@ import { registerSettingsHandlers, applySettings, getSettings } from './settings
 import { attachViewManager, registerViewHandlers, applyMasterVolume } from './stream-views'
 import { attachChatManager, registerChatHandlers } from './chat'
 import { registerChatAuthHandlers } from './chat-auth'
+import { registerSubscriptionHandlers } from './subscriptions'
 import { registerUpdater, scheduleUpdateCheck } from './updater'
 
 function createWindow(): BrowserWindow {
@@ -82,6 +83,7 @@ app.whenReady().then(() => {
   registerViewHandlers()
   registerChatHandlers()
   registerChatAuthHandlers()
+  registerSubscriptionHandlers()
   registerUpdater(() => BrowserWindow.getAllWindows()[0] ?? null)
 
   let lastSettings = getSettings()
