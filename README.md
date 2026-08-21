@@ -25,11 +25,28 @@ _Un overlay de streams de Twitch construido con Electron, React y TypeScript._
 
 [📥 Descargar última versión para Windows](https://github.com/meiyerDev/streamgrid/releases/latest/download/StreamGrid-Setup.exe)  
 [📥 Descargar última versión para Mac](https://github.com/meiyerDev/streamgrid/releases/latest/download/StreamGrid.dmg)  
-[📥 Descargar última versión para Linux](https://github.com/meiyerDev/streamgrid/releases/latest/download/StreamGrid-x86_64.AppImage)
+[📥 Descargar última versión para Linux](https://github.com/meiyerDev/streamgrid/releases/latest/download/StreamGrid-x64.tar.gz)
 
-**Actualizaciones automáticas:** al etiquetar un release (`vX.Y.Z`), la app instalada detecta la última versión publicada en GitHub Releases y se actualiza sola. Linux actualiza vía AppImage; en macOS se requiere firma/notarización para que la actualización automática funcione.
+**Linux (instalación local, sin root, sin FUSE):**
 
-Para probar el flujo de actualización en desarrollo: `STREAMGRID_UPDATE_TEST=1 pnpm dev` (usa `dev-app-update.yml` del root).
+```bash
+# tarball del release + updater del repo
+curl -fsSL -o StreamGrid-x64.tar.gz \
+  https://github.com/meiyerDev/streamgrid/releases/latest/download/StreamGrid-x64.tar.gz
+curl -fsSL -o streamgrid-updater \
+  https://raw.githubusercontent.com/meiyerDev/streamgrid/main/scripts/linux/streamgrid-updater
+chmod +x streamgrid-updater
+./streamgrid-updater install --file ./StreamGrid-x64.tar.gz
+streamgrid
+```
+
+Instala en `~/.local/share/StreamGrid`, crea `~/.local/bin/streamgrid` y un `.desktop`. Las actualizaciones las aplica `~/.local/share/StreamGrid/updater`, invocado por la app al arrancar (estilo Discord).
+
+También se publican AppImage y `.deb`. En arm64 usa `StreamGrid-arm64.tar.gz`.
+
+**Actualizaciones automáticas:** al etiquetar un release (`vX.Y.Z`), la app instalada detecta la última versión en GitHub Releases. Windows/macOS usan `electron-updater`; Linux usa el updater externo anterior. En macOS se requiere firma/notarización para que la actualización automática funcione.
+
+Para probar el flujo de actualización en desarrollo: `STREAMGRID_UPDATE_TEST=1 pnpm dev` (Win/mac usan `dev-app-update.yml`; Linux usa `scripts/linux/streamgrid-updater`).
 
 ---
 
@@ -130,7 +147,7 @@ src/
 | `pnpm build:unpack` | Build + unpacked dir (`electron-builder --dir`)        |
 | `pnpm build:win`    | Build + Windows installer                              |
 | `pnpm build:mac`    | Build + macOS package                                  |
-| `pnpm build:linux`  | Build + Linux package (AppImage / deb)                 |
+| `pnpm build:linux`  | Build + Linux package (tar.gz / AppImage / deb)        |
 
 ---
 

@@ -9,6 +9,7 @@ files:
   - '!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
   - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+  - '!scripts/*'
 asarUnpack:
   - resources/**
 win:
@@ -32,11 +33,17 @@ dmg:
   artifactName: StreamGrid.${ext}
 linux:
   icon: resources/icon.png
+  executableName: stream-grid
   target:
     - AppImage
     - deb
+    - tar.gz
   maintainer: MeiDev <streamgrid@neustandx.com>
   category: AudioVideo
+  artifactName: StreamGrid-${arch}.${ext}
+  extraResources:
+    - from: scripts/linux/streamgrid-updater
+      to: linux/streamgrid-updater
 appImage:
   artifactName: StreamGrid-${arch}.${ext}
 deb:

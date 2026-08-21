@@ -43,6 +43,7 @@ jobs:
             dist/*.dmg.blockmap
             dist/*.AppImage
             dist/*.deb
+            dist/*.tar.gz
             dist/*.zip
             dist/*.zip.blockmap
             dist/*.yml

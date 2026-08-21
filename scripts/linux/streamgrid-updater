@@ -1,0 +1,500 @@
+#!/usr/bin/env bash
+# StreamGrid Linux installer / updater (user-local, no root).
+# Modes: install | update | check | uninstall
+# Default (no args, or basename *Setup*): install
+set -euo pipefail
+
+APP_NAME="StreamGrid"
+APP_ID="com.streamgrid.app"
+BIN_NAME="streamgrid"
+GITHUB_OWNER="meiyerDev"
+GITHUB_REPO="streamgrid"
+EXECUTABLE_NAME="stream-grid"
+
+XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
+XDG_BIN_HOME="${XDG_BIN_HOME:-$HOME/.local/bin}"
+
+INSTALL_ROOT="${STREAMGRID_INSTALL_ROOT:-$XDG_DATA_HOME/StreamGrid}"
+VERSIONS_DIR="$INSTALL_ROOT/versions"
+CURRENT_LINK="$INSTALL_ROOT/current"
+UPDATER_PATH="$INSTALL_ROOT/updater"
+PENDING_DIR="$INSTALL_ROOT/pending"
+BIN_PATH="$XDG_BIN_HOME/$BIN_NAME"
+DESKTOP_DIR="$XDG_DATA_HOME/applications"
+DESKTOP_FILE="$DESKTOP_DIR/${APP_ID}.desktop"
+ICON_DIR="$XDG_DATA_HOME/icons/hicolor/256x256/apps"
+ICON_FILE="$ICON_DIR/streamgrid.png"
+VERSION_FILE="$INSTALL_ROOT/VERSION"
+
+KEEP_PREVIOUS_VERSIONS=1
+
+log() { printf '%s\n' "$*" >&2; }
+die() { log "error: $*"; exit 1; }
+
+arch_name() {
+  case "$(uname -m)" in
+    x86_64 | amd64) printf 'x64' ;;
+    aarch64 | arm64) printf 'arm64' ;;
+    *) die "unsupported architecture: $(uname -m)" ;;
+  esac
+}
+
+need_cmd() {
+  command -v "$1" >/dev/null 2>&1 || die "required command not found: $1"
+}
+
+installed_version() {
+  if [[ -f "$VERSION_FILE" ]]; then
+    tr -d '[:space:]' <"$VERSION_FILE"
+    return
+  fi
+  if [[ -L "$CURRENT_LINK" || -d "$CURRENT_LINK" ]]; then
+    basename "$(readlink -f "$CURRENT_LINK" 2>/dev/null || readlink "$CURRENT_LINK")"
+    return
+  fi
+  printf ''
+}
+
+ensure_dirs() {
+  mkdir -p "$VERSIONS_DIR" "$PENDING_DIR" "$XDG_BIN_HOME" "$DESKTOP_DIR" "$ICON_DIR"
+}
+
+self_install_updater() {
+  local src
+  src="$(readlink -f "$0" 2>/dev/null || realpath "$0" 2>/dev/null || printf '%s' "$0")"
+  if [[ -f "$src" ]]; then
+    cp -f "$src" "$UPDATER_PATH"
+    chmod 755 "$UPDATER_PATH"
+  fi
+}
+
+write_launcher() {
+  cat >"$BIN_PATH" <<EOF
+#!/usr/bin/env bash
+set -euo pipefail
+ROOT="$INSTALL_ROOT"
+CURRENT="\$ROOT/current"
+if [[ ! -d "\$CURRENT" ]]; then
+  echo "StreamGrid is not installed (missing \$CURRENT)" >&2
+  exit 1
+fi
+if [[ -x "\$CURRENT/$EXECUTABLE_NAME" ]]; then
+  exec "\$CURRENT/$EXECUTABLE_NAME" "\$@"
+fi
+if [[ -x "\$CURRENT/streamgrid" ]]; then
+  exec "\$CURRENT/streamgrid" "\$@"
+fi
+for f in "\$CURRENT"/*; do
+  if [[ -x "\$f" && -f "\$f" ]]; then
+    exec "\$f" "\$@"
+  fi
+done
+echo "StreamGrid binary not found under \$CURRENT" >&2
+exit 1
+EOF
+  chmod 755 "$BIN_PATH"
+}
+
+write_desktop() {
+  local icon_path="$ICON_FILE"
+  if [[ ! -f "$icon_path" ]]; then
+    icon_path="streamgrid"
+  fi
+  cat >"$DESKTOP_FILE" <<EOF
+[Desktop Entry]
+Type=Application
+Name=$APP_NAME
+Comment=Stream overlay grid for Twitch
+Exec=$BIN_PATH %U
+Icon=$icon_path
+Terminal=false
+Categories=AudioVideo;Network;
+StartupWMClass=$APP_NAME
+Keywords=twitch;stream;overlay;
+EOF
+  if command -v update-desktop-database >/dev/null 2>&1; then
+    update-desktop-database "$DESKTOP_DIR" >/dev/null 2>&1 || true
+  fi
+}
+
+install_icon_from_tree() {
+  local tree="$1"
+  local candidate
+  for candidate in \
+    "$tree/resources/icon.png" \
+    "$tree/usr/share/icons/hicolor/256x256/apps/"*.png \
+    "$tree/"*.png; do
+    if [[ -f "$candidate" ]]; then
+      cp -f "$candidate" "$ICON_FILE"
+      return 0
+    fi
+  done
+  return 0
+}
+
+github_api() {
+  local url="$1"
+  if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+    curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" \
+      -H "Accept: application/vnd.github+json" "$url"
+  else
+    curl -fsSL -H "Accept: application/vnd.github+json" "$url"
+  fi
+}
+
+# Prints: version\tasset_url\tasset_name
+resolve_latest_tarball() {
+  local arch json
+  arch="$(arch_name)"
+  need_cmd curl
+  need_cmd python3
+
+  json="$(github_api "https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest")"
+
+  printf '%s' "$json" | python3 -c '
+import json, sys
+
+arch = sys.argv[1]
+data = json.load(sys.stdin)
+tag = (data.get("tag_name") or "").lstrip("v")
+assets = data.get("assets") or []
+
+def arch_match(name: str) -> bool:
+    lower = name.lower()
+    if arch == "x64":
+        return any(x in lower for x in ("x64", "x86_64", "amd64"))
+    if arch == "arm64":
+        return any(x in lower for x in ("arm64", "aarch64"))
+    return False
+
+def pick(suffixes):
+    # Prefer assets that match arch in the name
+    for a in assets:
+        name = a.get("name") or ""
+        lower = name.lower()
+        if not any(lower.endswith(s) for s in suffixes):
+            continue
+        if arch_match(name):
+            return name, a.get("browser_download_url") or ""
+    # Fallback: single asset of that type (legacy naming)
+    matches = []
+    for a in assets:
+        name = a.get("name") or ""
+        lower = name.lower()
+        if any(lower.endswith(s) for s in suffixes):
+            matches.append(a)
+    if len(matches) == 1:
+        a = matches[0]
+        return a.get("name") or "", a.get("browser_download_url") or ""
+    return "", ""
+
+name, url = pick([".tar.gz", ".tgz"])
+if not url:
+    name, url = pick([".appimage"])
+if not url:
+    sys.stderr.write("no suitable release asset found for arch %s\n" % arch)
+    sys.exit(2)
+sys.stdout.write("%s\t%s\t%s\n" % (tag, url, name))
+' "$arch"
+}
+
+download_file() {
+  local url="$1" dest="$2"
+  need_cmd curl
+  log "Downloading $(basename "$dest")..."
+  curl -fL --progress-bar -o "$dest" "$url"
+}
+
+extract_payload() {
+  local archive="$1" dest_dir="$2"
+  rm -rf "$dest_dir"
+  mkdir -p "$dest_dir"
+
+  case "$archive" in
+    *.tar.gz | *.tgz)
+      need_cmd tar
+      local tmp
+      tmp="$(mktemp -d "$PENDING_DIR/extract.XXXXXX")"
+      tar -xzf "$archive" -C "$tmp"
+      local top count
+      count="$(find "$tmp" -mindepth 1 -maxdepth 1 | wc -l)"
+      top="$(find "$tmp" -mindepth 1 -maxdepth 1 -type d | head -n 1)"
+      if [[ -n "$top" && "$count" -eq 1 ]]; then
+        shopt -s dotglob nullglob
+        mv "$top"/* "$dest_dir"/
+        shopt -u dotglob nullglob
+      else
+        shopt -s dotglob nullglob
+        mv "$tmp"/* "$dest_dir"/
+        shopt -u dotglob nullglob
+      fi
+      rm -rf "$tmp"
+      ;;
+    *.AppImage | *.appimage)
+      chmod +x "$archive"
+      local tmp
+      tmp="$(mktemp -d "$PENDING_DIR/extract.XXXXXX")"
+      (
+        cd "$tmp"
+        if ! "$archive" --appimage-extract >/dev/null; then
+          die "failed to extract AppImage (use the .tar.gz release asset instead)"
+        fi
+      )
+      if [[ -d "$tmp/squashfs-root" ]]; then
+        shopt -s dotglob nullglob
+        mv "$tmp/squashfs-root"/* "$dest_dir"/
+        shopt -u dotglob nullglob
+      else
+        die "AppImage extract produced no squashfs-root"
+      fi
+      rm -rf "$tmp"
+      ;;
+    *)
+      die "unsupported archive: $archive"
+      ;;
+  esac
+
+  if [[ -f "$dest_dir/$EXECUTABLE_NAME" ]]; then
+    chmod +x "$dest_dir/$EXECUTABLE_NAME"
+  fi
+  if [[ -f "$dest_dir/chrome-sandbox" ]]; then
+    chmod 755 "$dest_dir/chrome-sandbox" || true
+  fi
+}
+
+prune_old_versions() {
+  local keep="$1" current_ver
+  current_ver="$(installed_version)"
+  [[ -z "$current_ver" ]] && return 0
+  mapfile -t versions < <(ls -1 "$VERSIONS_DIR" 2>/dev/null | sort -V)
+  local count="${#versions[@]}"
+  local max=$((keep + 1))
+  if ((count <= max)); then
+    return 0
+  fi
+  local to_delete=$((count - max))
+  local i
+  for ((i = 0; i < to_delete; i++)); do
+    local v="${versions[$i]}"
+    if [[ "$v" == "$current_ver" ]]; then
+      continue
+    fi
+    log "Removing old version $v"
+    rm -rf "${VERSIONS_DIR:?}/$v"
+  done
+}
+
+flip_current() {
+  local version="$1"
+  local target="$VERSIONS_DIR/$version"
+  [[ -d "$target" ]] || die "version dir missing: $target"
+  ln -sfn "$target" "$CURRENT_LINK"
+  printf '%s\n' "$version" >"$VERSION_FILE"
+}
+
+finalize_install() {
+  local version="$1" tree="$VERSIONS_DIR/$version"
+  flip_current "$version"
+  install_icon_from_tree "$tree"
+  write_launcher
+  write_desktop
+  self_install_updater
+  prune_old_versions "$KEEP_PREVIOUS_VERSIONS"
+  log "Installed $APP_NAME $version → $CURRENT_LINK"
+  log "Launcher: $BIN_PATH"
+}
+
+cmd_check() {
+  local current latest url name available
+  current="$(installed_version)"
+  if [[ -z "$current" ]]; then
+    current="0.0.0"
+  fi
+
+  if ! IFS=$'\t' read -r latest url name < <(resolve_latest_tarball); then
+    printf '{"current":"%s","latest":null,"updateAvailable":false,"error":"resolve_failed"}\n' "$current"
+    exit 1
+  fi
+
+  available=false
+  if [[ -n "$latest" && "$latest" != "$current" ]]; then
+    if printf '%s\n%s\n' "$current" "$latest" | sort -V | tail -n1 | grep -qx "$latest"; then
+      available=true
+    fi
+  fi
+
+  printf '{"current":"%s","latest":"%s","updateAvailable":%s,"asset":"%s"}\n' \
+    "$current" "$latest" "$available" "$name"
+}
+
+install_from_file() {
+  local file="$1" version="${2:-}"
+  ensure_dirs
+  if [[ -z "$version" ]]; then
+    if [[ "$(basename "$file")" =~ ([0-9]+\.[0-9]+\.[0-9]+) ]]; then
+      version="${BASH_REMATCH[1]}"
+    else
+      version="local-$(date +%Y%m%d%H%M%S)"
+    fi
+  fi
+  local dest="$VERSIONS_DIR/$version"
+  log "Extracting to $dest ..."
+  extract_payload "$file" "$dest"
+  finalize_install "$version"
+}
+
+cmd_install() {
+  local local_file=""
+  local relaunch=false
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --file | --appimage | --archive)
+        local_file="${2:-}"
+        shift 2 || die "$1 requires a path"
+        ;;
+      --relaunch)
+        relaunch=true
+        shift
+        ;;
+      -h | --help)
+        cat <<EOF
+Usage: streamgrid-updater install [--file PATH] [--relaunch]
+  Install StreamGrid into $INSTALL_ROOT (no root required).
+  Without --file, downloads the latest release asset from GitHub.
+EOF
+        exit 0
+        ;;
+      *)
+        die "unknown install option: $1"
+        ;;
+    esac
+  done
+
+  ensure_dirs
+  if [[ -n "$local_file" ]]; then
+    [[ -f "$local_file" ]] || die "file not found: $local_file"
+    install_from_file "$local_file"
+  else
+    local latest url name archive
+    IFS=$'\t' read -r latest url name < <(resolve_latest_tarball) \
+      || die "could not resolve latest release"
+    archive="$PENDING_DIR/$name"
+    download_file "$url" "$archive"
+    install_from_file "$archive" "$latest"
+    rm -f "$archive"
+  fi
+
+  if $relaunch; then
+    nohup "$BIN_PATH" >/dev/null 2>&1 &
+  fi
+  log "Done. Run: $BIN_NAME   (or open $APP_NAME from your app menu)"
+  exit 0
+}
+
+cmd_update() {
+  local relaunch=false
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --relaunch)
+        relaunch=true
+        shift
+        ;;
+      -h | --help)
+        cat <<EOF
+Usage: streamgrid-updater update [--relaunch]
+  Download and install the latest StreamGrid release if newer.
+EOF
+        exit 0
+        ;;
+      *)
+        die "unknown update option: $1"
+        ;;
+    esac
+  done
+
+  local current latest url name
+  current="$(installed_version)"
+  [[ -n "$current" ]] || die "StreamGrid is not installed; run: streamgrid-updater install"
+
+  IFS=$'\t' read -r latest url name < <(resolve_latest_tarball) \
+    || die "could not resolve latest release"
+
+  if [[ "$latest" == "$current" ]]; then
+    log "Already up to date ($current)"
+    if $relaunch; then
+      nohup "$BIN_PATH" >/dev/null 2>&1 &
+    fi
+    exit 10
+  fi
+
+  log "Updating $current → $latest"
+  ensure_dirs
+  local archive="$PENDING_DIR/$name"
+  download_file "$url" "$archive"
+  install_from_file "$archive" "$latest"
+  rm -f "$archive"
+
+  if $relaunch; then
+    sleep 1
+    nohup "$BIN_PATH" >/dev/null 2>&1 &
+  fi
+  exit 0
+}
+
+cmd_uninstall() {
+  log "Removing launcher and desktop entry..."
+  rm -f "$BIN_PATH" "$DESKTOP_FILE" "$ICON_FILE"
+  if [[ -d "$INSTALL_ROOT" ]]; then
+    log "Removing $INSTALL_ROOT"
+    rm -rf "$INSTALL_ROOT"
+  fi
+  if command -v update-desktop-database >/dev/null 2>&1; then
+    update-desktop-database "$DESKTOP_DIR" >/dev/null 2>&1 || true
+  fi
+  log "Uninstalled $APP_NAME (user data in ~/.config was not removed)"
+  exit 0
+}
+
+usage() {
+  cat <<EOF
+StreamGrid Linux updater
+
+Usage:
+  streamgrid-updater install [--file PATH] [--relaunch]
+  streamgrid-updater update  [--relaunch]
+  streamgrid-updater check
+  streamgrid-updater uninstall
+
+Install root: $INSTALL_ROOT
+EOF
+}
+
+main() {
+  local mode="${1:-}"
+  local base
+  base="$(basename "$0")"
+
+  if [[ -z "$mode" || "$mode" == -* ]]; then
+    if [[ "$base" == *Setup* || "$base" == *setup* || "$base" == *Install* ]]; then
+      mode="install"
+    else
+      usage
+      exit 1
+    fi
+  else
+    shift
+  fi
+
+  case "$mode" in
+    install) cmd_install "$@" ;;
+    update) cmd_update "$@" ;;
+    check) cmd_check "$@" ;;
+    uninstall) cmd_uninstall "$@" ;;
+    -h | --help | help) usage ;;
+    *)
+      die "unknown mode: $mode"
+      ;;
+  esac
+}
+
+main "$@"
