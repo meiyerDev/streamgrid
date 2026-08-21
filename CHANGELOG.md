@@ -21,6 +21,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
+## [1.4.0] - 2026-08-21
+
+### Added
+
+- **Linux external updater** — `scripts/linux/streamgrid-updater` installs into `~/.local` from a release tarball (no root, no FUSE). The app launches it on boot (Discord-style) for updates; Windows/macOS keep `electron-updater`.
+- **Linux `tar.gz` release artifact** — preferred payload for the updater (`StreamGrid-${arch}.tar.gz`), alongside AppImage and deb.
+
+### Changed
+
+- Linux download link in the README points to `StreamGrid-x64.tar.gz` (install via `streamgrid-updater install --file`).
+
+### Fixed
+
+### Removed
+
 ## [1.3.0] - 2026-08-11
 
 ### Added
@@ -139,7 +154,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-[Unreleased]: https://github.com/meiyerDev/streamgrid/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/meiyerDev/streamgrid/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/meiyerDev/streamgrid/releases/tag/v1.4.0
 [1.3.0]: https://github.com/meiyerDev/streamgrid/releases/tag/v1.3.0
 [1.2.0]: https://github.com/meiyerDev/streamgrid/releases/tag/v1.2.0
 [1.1.0]: https://github.com/meiyerDev/streamgrid/releases/tag/v1.1.0

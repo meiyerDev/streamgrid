@@ -1,6 +1,6 @@
 {
   "name": "stream-grid",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "license": "SEE LICENSE IN LICENSE",
   "description": "StreamGrid — gestor de mosaicos de streams en vivo",
   "main": "./out/main/index.js",
