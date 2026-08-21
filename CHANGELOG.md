@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Channel selector with "Otro" option** — the "Add Stream" form now shows followed channels in a dropdown filtered by the selected provider. Selecting "Otro..." reveals a text field for entering any channel name.
+
 ### Changed
 
 ### Fixed

@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { Plus } from 'lucide-react'
 import { PROVIDERS, type ProviderId } from '../../../shared/providers'
 import { PROVIDER_ICONS } from '../providers'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 import { useSubscribedChannels } from '../hooks/use-subscriptions'
+
+const OTHER_VALUE = '__other__'
 
 interface AddStreamFormProps {
   onAdd: (providerId: ProviderId, channel: string) => Promise<void>
@@ -31,64 +33,46 @@ const PROVIDER_ITEMS: Record<ProviderId, React.ReactNode> = Object.fromEntries(
 
 export function AddStreamForm({ onAdd, onCancel }: AddStreamFormProps): React.JSX.Element {
   const [providerId, setProviderId] = useState<ProviderId>(PROVIDERS[0].id)
-  const [channel, setChannel] = useState('')
+  const [selectedChannel, setSelectedChannel] = useState<string | null>(null)
+  const [selectedChannelLabel, setSelectedChannelLabel] = useState<string | null>(null)
+  const [otherChannel, setOtherChannel] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [adding, setAdding] = useState(false)
-  const [showSuggestions, setShowSuggestions] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
-  const suggestionsRef = useRef<HTMLDivElement>(null)
 
   const { channels: followedChannels, loading: loadingFollowed } = useSubscribedChannels()
 
-  const trimmed = channel.trim()
-  const invalid = trimmed.length === 0
+  const channelItems: { label: React.ReactNode; value: string }[] = followedChannels
+    .filter((c) => c.providerId === providerId)
+    .map((c) => ({
+      label: (
+        <span className="flex items-center gap-2">
+          {c.channel}
+          <span className="text-xs text-white/40">seguido</span>
+        </span>
+      ),
+      value: c.channel
+    }))
 
-  const suggestions =
-    channel.trim().length > 0 && providerId === 'twitch'
-      ? followedChannels.filter(
-          (c) =>
-            c.providerId === providerId &&
-            c.channel.toLowerCase().includes(channel.trim().toLowerCase())
-        )
-      : []
+  const channelToSubmit =
+    selectedChannel === OTHER_VALUE ? otherChannel.trim() : (selectedChannel ?? '').trim()
 
-  const showSuggestionsDropdown = showSuggestions && suggestions.length > 0
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent): void => {
-      if (
-        suggestionsRef.current &&
-        !suggestionsRef.current.contains(event.target as Node) &&
-        inputRef.current &&
-        !inputRef.current.contains(event.target as Node)
-      ) {
-        setShowSuggestions(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
+  const isInvalid = channelToSubmit.length === 0
 
   async function handleSubmit(event: React.FormEvent): Promise<void> {
     event.preventDefault()
-    if (invalid || adding) return
+    if (isInvalid || adding) return
     setAdding(true)
     setError(null)
-    setShowSuggestions(false)
     try {
-      await onAdd(providerId, trimmed)
-      setChannel('')
+      await onAdd(providerId, channelToSubmit)
+      setSelectedChannel(null)
+      setSelectedChannelLabel(null)
+      setOtherChannel('')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo añadir el stream')
     } finally {
       setAdding(false)
     }
-  }
-
-  function handleSelectSuggestion(channelName: string): void {
-    setChannel(channelName)
-    setShowSuggestions(false)
-    inputRef.current?.focus()
   }
 
   return (
@@ -101,7 +85,12 @@ export function AddStreamForm({ onAdd, onCancel }: AddStreamFormProps): React.JS
           items={PROVIDER_ITEMS}
           value={providerId}
           onValueChange={(value) => {
-            if (value) setProviderId(value)
+            if (value) {
+              setProviderId(value)
+              setSelectedChannel(null)
+              setSelectedChannelLabel(null)
+              setOtherChannel('')
+            }
           }}
         >
           <SelectTrigger id="stream-provider">
@@ -116,56 +105,66 @@ export function AddStreamForm({ onAdd, onCancel }: AddStreamFormProps): React.JS
           </SelectContent>
         </Select>
       </div>
-      <div className="relative flex flex-col gap-1.5">
+      <div className="flex flex-col gap-1.5">
         <label htmlFor="stream-channel" className="text-sm font-semibold text-white/80">
           Canal
         </label>
-        <input
-          ref={inputRef}
-          id="stream-channel"
-          value={channel}
-          onChange={(event) => {
-            setChannel(event.target.value)
-            setShowSuggestions(true)
+        <Select
+          items={channelItems}
+          value={selectedChannel ?? undefined}
+          onValueChange={(value) => {
+            if (value === OTHER_VALUE) {
+              setSelectedChannel(value)
+              setSelectedChannelLabel('Otro...')
+            } else {
+              setSelectedChannel(value ?? null)
+              setSelectedChannelLabel(null)
+            }
           }}
-          onFocus={() => setShowSuggestions(true)}
-          placeholder="nombre del canal"
-          autoComplete="off"
-          className="h-11 w-full rounded-xl bg-surface px-4 text-sm text-white placeholder:text-white/40 focus-visible:outline-2 focus-visible:outline-offset-2"
-        />
-        {showSuggestionsDropdown && (
-          <div
-            ref={suggestionsRef}
-            className="absolute top-full z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-xl bg-surface py-1 shadow-lg"
-          >
+        >
+          <SelectTrigger id="stream-channel">
+            <SelectValue placeholder="Elige un canal">
+              {selectedChannelLabel ?? undefined}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={OTHER_VALUE} className="border-t border-white/10 text-white/60">
+              Otro...
+            </SelectItem>
             {loadingFollowed ? (
-              <div className="px-4 py-2 text-sm text-white/50">Cargando seguidos...</div>
+              <div className="px-3 py-2 text-sm text-white/50">Cargando seguidos...</div>
+            ) : channelItems.length === 0 ? (
+              <div className="px-3 py-2 text-sm text-white/50">Sin canales seguidos</div>
             ) : (
-              suggestions.map((suggestion) => {
-                const provider = PROVIDERS.find((p) => p.id === suggestion.providerId)
-                const Icon = provider ? PROVIDER_ICONS[provider.id] : null
-                return (
-                  <button
-                    key={`${suggestion.providerId}-${suggestion.channel}`}
-                    type="button"
-                    onClick={() => handleSelectSuggestion(suggestion.channel)}
-                    className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-white hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-[-2px]"
-                  >
-                    {Icon && <Icon className="size-4 shrink-0 text-blurple" aria-hidden="true" />}
-                    <span className="truncate">{suggestion.channel}</span>
-                    <span className="ml-auto text-xs text-white/40">seguido</span>
-                  </button>
-                )
-              })
+              channelItems.map((item) => (
+                <SelectItem key={item.value} value={item.value}>
+                  {item.label}
+                </SelectItem>
+              ))
             )}
-          </div>
-        )}
+          </SelectContent>
+        </Select>
       </div>
+      {selectedChannel === OTHER_VALUE && (
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="stream-channel-other" className="text-sm font-semibold text-white/80">
+            Nombre del canal
+          </label>
+          <input
+            id="stream-channel-other"
+            value={otherChannel}
+            onChange={(event) => setOtherChannel(event.target.value)}
+            placeholder="nombre del canal"
+            autoComplete="off"
+            className="h-11 w-full rounded-xl bg-surface px-4 text-sm text-white placeholder:text-white/40 focus-visible:outline-2 focus-visible:outline-offset-2"
+          />
+        </div>
+      )}
       {error && <p className="text-sm text-red-400">{error}</p>}
       <div className="mt-2 flex gap-2">
         <button
           type="submit"
-          disabled={invalid || adding}
+          disabled={isInvalid || adding}
           className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-blurple px-6 py-3 text-sm font-semibold text-white transition hover:bg-blurple/90 focus-visible:outline-2 focus-visible:outline-offset-2 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60"
         >
           {adding ? (
