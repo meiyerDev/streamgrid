@@ -15,14 +15,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Changed
+
+### Fixed
+
+### Removed
+
+## [1.4.1] - 2026-08-22
+
+### Added
+
 - **Channel selector with "Otro" option** — the "Add Stream" form now shows followed channels in a dropdown filtered by the selected provider. Selecting "Otro..." reveals a text field for entering any channel name.
 - **"Autorizar Twitch" unified login** — the Twitch account login now combines webview cookie login and OAuth authorization in a single flow. The webview first logs into Twitch, saves session cookies to `persist:twitch`, and then automatically completes the OAuth chat authorization using the inherited cookies. This ensures subscribed/Turbo users see no ads when watching streams.
 
 ### Changed
 
 - **Unified Twitch authorization** — `ProviderCard` now triggers the full "Autorizar Twitch" flow instead of a separate login modal and chat auth card.
-
-### Changed
 
 ### Fixed
 
