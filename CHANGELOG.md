@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **Twitch Chat OAuth** — certificate trust now registered on the auth window's session partition (`persist:twitch`), fixing the blank screen redirect issue after Twitch authorization.
+- **Add stream without existing profile** — the mosaic now correctly updates when adding the first stream without any profile created; previously it would hang until a manual refresh.
 
 ### Removed
 

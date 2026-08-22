@@ -65,12 +65,10 @@ export function useProfiles(): UseProfiles {
     }))
   }, [])
 
-  const addStream = useCallback(
-    async (providerId: ProviderId, channel: string) => {
-      setStreams(await window.api.streams.add({ providerId, channel }))
-    },
-    [setStreams]
-  )
+  const addStream = useCallback(async (providerId: ProviderId, channel: string) => {
+    await window.api.streams.add({ providerId, channel })
+    setStore(await window.api.profiles.list())
+  }, [])
 
   const removeStream = useCallback(
     async (id: string) => {
