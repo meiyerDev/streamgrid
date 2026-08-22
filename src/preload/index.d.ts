@@ -10,7 +10,7 @@ import type {
   ChatSendResult,
   ChatStatusPayload
 } from '../shared/chat'
-import type { TwitchChatStatus } from '../shared/chat-auth'
+import type { TwitchChatStatus, AuthorizeTwitchResult } from '../shared/chat-auth'
 import type { GetFollowedResult, SubscriptionsStatus } from '../shared/subscriptions'
 import type { UpdaterEvent, UpdaterState } from '../shared/updater'
 
@@ -55,6 +55,7 @@ declare global {
         getStatus: () => Promise<TwitchChatStatus>
         login: () => Promise<TwitchChatStatus>
         logout: () => Promise<TwitchChatStatus>
+        authorize: () => Promise<AuthorizeTwitchResult>
       }
       app: {
         quit: () => Promise<void>

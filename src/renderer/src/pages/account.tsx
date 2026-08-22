@@ -2,8 +2,7 @@ import { Link } from '@tanstack/react-router'
 import { ArrowLeft } from 'lucide-react'
 import { PROVIDERS, getProvider } from '../../../shared/providers'
 import { ProviderCard } from '../components/provider-card'
-import { LoginModal } from '../components/login-modal'
-import { ChatAuthCard } from '../components/chat-auth-card'
+import { AuthorizeTwitchModal } from '../components/authorize-twitch-modal'
 import { useProviderSessions } from '../hooks/use-provider-sessions'
 
 export function AccountPage(): React.JSX.Element {
@@ -35,12 +34,15 @@ export function AccountPage(): React.JSX.Element {
           />
         ))}
       </div>
-      <ChatAuthCard />
       {activeLogin && activeProvider && (
-        <LoginModal
+        <AuthorizeTwitchModal
           provider={activeProvider}
+          onAuthorize={async () => {
+            const result = await window.api.chatAuth.authorize()
+            await refresh()
+            return result
+          }}
           onClose={() => closeLogin(activeLogin)}
-          onLoggedIn={() => refresh()}
         />
       )}
     </main>

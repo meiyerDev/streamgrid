@@ -29,6 +29,8 @@ export interface ProviderSession {
   loggedIn: boolean
   username?: string
   avatarUrl?: string
+  cookiesSaved: boolean
+  hasAccessToken: boolean
 }
 
 export const PROVIDERS: ProviderDef[] = [

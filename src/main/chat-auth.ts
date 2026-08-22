@@ -4,7 +4,7 @@ import type { IncomingMessage, ServerResponse } from 'http'
 import { randomBytes } from 'crypto'
 import { existsSync, readFileSync, unlinkSync, writeFileSync } from 'fs'
 import { join } from 'path'
-import type { TwitchChatStatus } from '../shared/chat-auth'
+import type { TwitchChatStatus, AuthorizeTwitchResult } from '../shared/chat-auth'
 import { ensureCert, registerCertificateTrust } from './chat-cert'
 
 // App registrada en dev.twitch.tv con redirect URI https://localhost:6060
@@ -435,6 +435,30 @@ async function login(): Promise<TwitchChatStatus> {
   return statusFromSession(session)
 }
 
+async function authorizeTwitch(): Promise<AuthorizeTwitchResult> {
+  try {
+    const status = await login()
+    if (status.authenticated && status.username) {
+      return {
+        success: true,
+        cookiesSaved: true,
+        username: status.username
+      }
+    }
+    return {
+      success: false,
+      cookiesSaved: false,
+      error: status.error ?? 'Error desconocido'
+    }
+  } catch (err) {
+    return {
+      success: false,
+      cookiesSaved: false,
+      error: err instanceof Error ? err.message : 'Error desconocido'
+    }
+  }
+}
+
 export function invalidateChatSession(): void {
   deleteToken()
   notifyTokenChanged()
@@ -512,5 +536,6 @@ export function registerChatAuthHandlers(): void {
   ipcMain.handle('chatAuth:getStatus', () => getStatus())
   ipcMain.handle('chatAuth:login', () => login())
   ipcMain.handle('chatAuth:logout', () => logout())
+  ipcMain.handle('chatAuth:authorize', () => authorizeTwitch())
   app.on('will-quit', () => stopServer())
 }

@@ -11,7 +11,7 @@ import type {
   ChatSendResult,
   ChatStatusPayload
 } from '../shared/chat'
-import type { TwitchChatStatus } from '../shared/chat-auth'
+import type { TwitchChatStatus, AuthorizeTwitchResult } from '../shared/chat-auth'
 import type { GetFollowedResult, SubscriptionsStatus } from '../shared/subscriptions'
 import type { UpdaterEvent, UpdaterState } from '../shared/updater'
 
@@ -75,7 +75,8 @@ const api = {
   chatAuth: {
     getStatus: (): Promise<TwitchChatStatus> => ipcRenderer.invoke('chatAuth:getStatus'),
     login: (): Promise<TwitchChatStatus> => ipcRenderer.invoke('chatAuth:login'),
-    logout: (): Promise<TwitchChatStatus> => ipcRenderer.invoke('chatAuth:logout')
+    logout: (): Promise<TwitchChatStatus> => ipcRenderer.invoke('chatAuth:logout'),
+    authorize: (): Promise<AuthorizeTwitchResult> => ipcRenderer.invoke('chatAuth:authorize')
   },
   updater: {
     getState: (): Promise<UpdaterState> => ipcRenderer.invoke('updater:getState'),

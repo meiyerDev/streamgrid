@@ -9,11 +9,27 @@ import {
 const TWITCH_PUBLIC_CLIENT_ID = 'kimne78kx3ncx6brgo4mv6wki5h1ko'
 
 async function detectTwitch(def: ProviderDef): Promise<ProviderSession> {
-  const base: ProviderSession = { providerId: def.id, loggedIn: false }
+  const base: ProviderSession = {
+    providerId: def.id,
+    loggedIn: false,
+    cookiesSaved: false,
+    hasAccessToken: false
+  }
   const cookies = await session.fromPartition(def.partition).cookies.get({})
   const token = cookies.find((cookie) => cookie.name === 'auth-token')?.value
 
-  if (!token) return base
+  if (!token) {
+    const hasSessionCookies = cookies.some(
+      (cookie) =>
+        cookie.name === 'auth-token' ||
+        cookie.name === 'auth-user' ||
+        cookie.name === 'twilight-user'
+    )
+    return {
+      ...base,
+      cookiesSaved: hasSessionCookies
+    }
+  }
 
   const fallbackUsername = cookies.find((cookie) => cookie.name === 'auth-user')?.value
 
@@ -35,7 +51,9 @@ async function detectTwitch(def: ProviderDef): Promise<ProviderSession> {
           providerId: def.id,
           loggedIn: true,
           username: user.display_name,
-          avatarUrl: user.profile_image_url
+          avatarUrl: user.profile_image_url,
+          cookiesSaved: true,
+          hasAccessToken: true
         }
       }
     }
@@ -46,7 +64,9 @@ async function detectTwitch(def: ProviderDef): Promise<ProviderSession> {
   return {
     providerId: def.id,
     loggedIn: true,
-    username: fallbackUsername
+    username: fallbackUsername,
+    cookiesSaved: true,
+    hasAccessToken: true
   }
 }
 
@@ -59,12 +79,13 @@ export async function detectSession(id: ProviderId): Promise<ProviderSession> {
   if (!def) throw new Error(`Unknown provider: ${id}`)
 
   const detect = DETECTORS[id]
-  if (!detect) return { providerId: id, loggedIn: false }
+  if (!detect)
+    return { providerId: id, loggedIn: false, cookiesSaved: false, hasAccessToken: false }
 
   try {
     return await detect(def)
   } catch {
-    return { providerId: id, loggedIn: false }
+    return { providerId: id, loggedIn: false, cookiesSaved: false, hasAccessToken: false }
   }
 }
 
